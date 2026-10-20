@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B5D7A">
+<title>QSSE terrain — PAGANETTI THERMIQUE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,50 50,95 5,50' fill='white' stroke='%23E3000F' stroke-width='9'/><rect x='45' y='27' width='10' height='32' rx='3'/><circle cx='50' cy='70' r='6'/></svg>">
+<style>
+:root{
+  --bg:#EDF1F4; --surface:#FFFFFF; --ink:#13293D; --muted:#5B6B78; --line:#D3DCE2;
+  --brand:#0B5D7A; --brand-ink:#FFFFFF; --chip:#E1E9EE;
+  --ok:#1E7B4C; --warn:#A86200; --bad:#C62828; --info:#4F46A8; --grey:#6B7A86;
+  --ghs:#E3000F; --radius:14px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E1820; --surface:#16242E; --ink:#E5EDF2; --muted:#9AAAB6; --line:#2A3B47;
+    --brand:#4AAFD6; --brand-ink:#05202B; --chip:#21323D;
+    --ok:#4CC38A; --warn:#F0A53A; --bad:#FF6B6B; --info:#A59BFF; --grey:#9AAAB6;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Roboto,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;overscroll-behavior-y:contain;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* En-tête */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:12px;padding:12px 16px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--brand)}
+.brand{flex:1;min-width:0}
+.brand .t{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.brand .s{font-size:12px;opacity:.85}
+.sync{font-size:12px;opacity:.9;text-align:right;max-width:40vw}
+.icon-btn{border:0;background:rgba(255,255,255,.16);color:inherit;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none}
+.icon-btn svg{width:22px;height:22px}
+
+main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
+.searchbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hh,70px));z-index:10;background:var(--bg);padding:4px 0 10px}
+.search{width:100%;border:2px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:14px 16px;font-size:17px}
+.search:focus{border-color:var(--brand);outline:none}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;background:var(--chip);border-radius:999px;padding:8px 14px;font-size:14px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);font-weight:600}
+.chip .n{opacity:.7;margin-left:4px}
+
+.group-h{font-size:14px;font-weight:700;color:var(--muted);margin:18px 4px 8px}
+.list{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:none;padding:14px 16px;border-top:1px solid var(--line);min-height:64px}
+.row:first-child{border-top:0}
+.row:active{background:var(--chip)}
+.row-main{flex:1;min-width:0}
+.row-title{font-weight:600;font-size:16px}
+.row-sub{font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.mini{display:flex;gap:2px;flex:none}
+.chev{color:var(--muted);flex:none}
+
+.empty{padding:32px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);margin-bottom:4px}
+
+/* Onglets bas */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tab{flex:1;border:0;background:none;padding:10px 4px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;color:var(--muted)}
+.tab svg{width:26px;height:26px}
+.tab[aria-selected="true"]{color:var(--brand);font-weight:700}
+
+/* Panneau détail */
+.panel{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);animation:slide .18s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}}
+.panel-top{position:sticky;top:0;z-index:2;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:10px;padding:10px 12px}
+.panel-top h2{margin:0;font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel-body{max-width:760px;margin:0 auto;padding:16px 14px 40px}
+
+.title{font-size:24px;font-weight:700;line-height:1.2;margin:0 0 4px}
+.lead{font-size:17px;margin:0 0 2px}
+.muted{color:var(--muted);font-size:14px;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px}
+.card h3{margin:0 0 8px;font-size:15px;color:var(--muted)}
+.pre{white-space:pre-wrap;margin:0}
+
+.mention{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:8px;font-weight:800;font-size:15px;letter-spacing:.04em}
+.mention.danger{background:var(--ghs);color:#fff}
+.mention.attention{background:#FFB300;color:#2A1A00}
+.pictos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
+.picto{text-align:center;font-size:13px;line-height:1.25}
+.picto svg{display:block;margin:0 auto 4px}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:var(--radius);padding:16px;font-size:17px;font-weight:700;text-decoration:none;background:var(--brand);color:var(--brand-ink);margin-top:16px}
+.btn.secondary{background:var(--chip);color:var(--ink)}
+.btn.danger{background:none;color:var(--bad);border:2px solid var(--bad)}
+.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
+.btn svg{width:22px;height:22px}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn{margin-top:10px}
+
+.pdp-h{font-size:15px;font-weight:700;margin:20px 4px 6px}
+.validity{font-weight:600}
+.validity.bad{color:var(--bad)}
+.validity.grey{color:var(--grey)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+
+/* Statuts */
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1.5px solid currentColor}
+.b-ok{color:var(--ok)} .b-warn{color:var(--warn)} .b-bad{color:var(--bad)} .b-info{color:var(--info)} .b-grey{color:var(--grey)}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none;font-size:13px;color:var(--muted)}
+
+/* Gestion */
+.seg{display:flex;background:var(--chip);border-radius:12px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.admin-tools{display:flex;gap:10px;margin:4px 0 0}
+.admin-tools .btn{margin-top:0;padding:12px;font-size:15px}
+
+.field{margin-top:14px}
+.field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+.field .hint{font-size:13px;color:var(--muted);margin-top:4px}
+.input{width:100%;border:2px solid var(--line);background:var(--surface);border-radius:10px;padding:12px;font-size:16px}
+.input:focus{border-color:var(--brand);outline:none}
+textarea.input{min-height:84px;resize:vertical}
+.inline{display:flex;gap:8px}
+.inline .input{flex:1;min-width:0}
+.mini-btn{flex:none;border:0;background:var(--chip);border-radius:10px;padding:0 14px;font-size:14px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.check{display:flex;align-items:center;gap:10px;margin-top:16px;font-weight:600}
+.check input{width:22px;height:22px}
+.picto-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.picto-pick label{border:2px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;background:var(--surface)}
+.picto-pick input{position:absolute;opacity:0;pointer-events:none}
+.picto-pick input:checked + span{color:var(--brand);font-weight:700}
+.picto-pick label:has(input:checked){border-color:var(--brand);background:var(--chip)}
+.picto-pick input:focus-visible + span{outline:3px solid var(--brand)}
+
+/* Fenêtre (code, Drive) */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(5,20,30,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:88vh;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));overflow-y:auto}
+@media (min-width:700px){.modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h2{margin:0 0 6px;font-size:20px}
+.pin{display:block;margin:18px auto 6px;width:200px;text-align:center;font-size:34px;letter-spacing:.5em;padding:12px 0 12px .5em;border:2px solid var(--line);border-radius:14px;background:var(--bg)}
+.pin:focus{border-color:var(--brand);outline:none}
+.err{color:var(--bad);text-align:center;min-height:22px;font-size:14px;font-weight:600}
+.drive-item{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:12px 4px}
+.drive-item small{display:block;color:var(--muted)}
+.drive-item.used{opacity:.55}
+
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-size:15px;max-width:90vw;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+.spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;margin:30px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="t">QSSE terrain</div><div class="s">PAGANETTI THERMIQUE</div></div>
+  <span id="sync" class="sync" aria-live="polite"></span>
+  <button id="lockBtn" class="icon-btn" aria-label="Espace gestion">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+  </button>
+</header>
+
+<main>
+  <section id="view-fds">
+    <div class="searchbar"><input id="fdsSearch" class="search" type="search" placeholder="Produit, utilité, fabricant…" autocomplete="off" aria-label="Rechercher un produit"></div>
+    <div id="famChips" class="chips" role="group" aria-label="Familles"></div>
+    <div id="fdsList"></div>
+  </section>
+
+  <section id="view-pdp" hidden>
+    <div class="searchbar"><input id="pdpSearch" class="search" type="search" placeholder="Client, site, n° de PDP…" autocomplete="off" aria-label="Rechercher un client"></div>
+    <div id="pdpList"></div>
+  </section>
+
+  <section id="view-admin" hidden>
+    <div class="seg" role="group" aria-label="Gestion">
+      <button data-atab="pdp" aria-pressed="true">Plans de prévention</button>
+      <button data-atab="fds" aria-pressed="false">FDS</button>
+    </div>
+    <div id="adminBody"></div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" data-view="fds" role="tab" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/><path d="M12 8v5" stroke-linecap="round"/><circle cx="12" cy="16" r=".6" fill="currentColor"/></svg>
+    FDS
+  </button>
+  <button class="tab" data-view="pdp" role="tab" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h7M9 16h7" stroke-linecap="round"/></svg>
+    Plans de prévention
+  </button>
+  <button class="tab" data-view="admin" role="tab" aria-selected="false" hidden id="adminTab">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+    Gestion
+  </button>
+</nav>
+
+<div id="panel" class="panel" hidden>
+  <div class="panel-top">
+    <button class="icon-btn" id="panelBack" aria-label="Retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h2 id="panelTitle"></h2>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<div id="modal" class="modal" hidden><div class="sheet" id="modalBody" role="dialog" aria-modal="true"></div></div>
+<div id="toast" class="toast" hidden role="status"></div>
+
+<script>
+/* ================== CONFIGURATION ================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbym3YLcasWWtEUUiV6ZGc_lRFcOHgo-Oar1HcHDaMQh1qhNmDc9pR60KezJLTDhkn-B/exec';
+
+/* ================== PICTOGRAMMES SGH ================== */
+const GHS = {
+  GHS01:{l:'Explosif', g:'<circle cx="50" cy="56" r="10"/><path d="M50 30v10M50 72v6M30 56h8M62 56h8M37 43l6 6M63 43l-6 6M37 69l6-6M63 69l-6-6" stroke="#000" stroke-width="4" stroke-linecap="round"/>'},
+  GHS02:{l:'Inflammable', g:'<path d="M50 24c4 10 14 16 14 30a14 14 0 0 1-28 0c0-7 4-11 7-15 0 5 2 8 5 9-1-9 0-16 2-24z"/><rect x="32" y="71" width="36" height="4"/>'},
+  GHS03:{l:'Comburant', g:'<path d="M50 20c3 7 10 11 10 20a10 10 0 0 1-20 0c0-5 3-8 5-10 0 3 1 5 3 6-1-6 0-11 2-16z"/><circle cx="50" cy="61" r="9" fill="none" stroke="#000" stroke-width="5"/><rect x="32" y="74" width="36" height="4"/>'},
+  GHS04:{l:'Gaz sous pression', g:'<rect x="26" y="44" width="42" height="16" rx="8"/><rect x="66" y="48" width="8" height="8"/><rect x="74" y="45" width="4" height="14"/>'},
+  GHS05:{l:'Corrosif', g:'<path d="M30 30l12 4-4 12-12-4z"/><path d="M58 34l12-4 4 12-12 4z"/><circle cx="38" cy="53" r="2.5"/><circle cx="36" cy="59" r="2.5"/><circle cx="62" cy="53" r="2.5"/><circle cx="64" cy="59" r="2.5"/><rect x="27" y="65" width="19" height="6"/><path d="M54 65h20v6h-6l-2 4h-6l-2-4h-4z"/>'},
+  GHS06:{l:'Toxique', g:'<circle cx="50" cy="40" r="12"/><rect x="43" y="46" width="14" height="10" rx="2"/><circle cx="45" cy="39" r="3.5" fill="#fff"/><circle cx="55" cy="39" r="3.5" fill="#fff"/><path d="M50 44l-2 4h4z" fill="#fff"/><path d="M33 61l34 13M67 61L33 74" stroke="#000" stroke-width="5" stroke-linecap="round"/>'},
+  GHS07:{l:'Irritant / nocif', g:'<rect x="45" y="26" width="10" height="34" rx="3"/><circle cx="50" cy="70" r="6"/>'},
+  GHS08:{l:'Danger pour la santé', g:'<circle cx="50" cy="30" r="7"/><path d="M35 76c0-20 4-34 15-34s15 14 15 34z"/><path d="M50 50l2.6 6 6.4.6-4.9 4.2 1.5 6.3L50 63.8l-5.6 3.3 1.5-6.3-4.9-4.2 6.4-.6z" fill="#fff"/>'},
+  GHS09:{l:'Dangereux pour l’environnement', g:'<path d="M35 70V40M35 52l-8-8M35 46l7-8M35 58l6-4" stroke="#000" stroke-width="3.5" stroke-linecap="round" fill="none"/><rect x="30" y="70" width="40" height="3"/><path d="M48 61c6-7 15-7 19 0-4 7-13 7-19 0zM67 61l6-5v10z"/>'}
+};
+function picto(code, size){
+  const p = GHS[code]; if(!p) return '';
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${p.l}"><polygon points="50,5 95,50 50,95 5,50" fill="#fff" stroke="#E3000F" stroke-width="7"/><g fill="#000">${p.g}</g></svg>`;
+}
+
+/* ================== ÉTAT ================== */
+const S = {
+  data:null, fam:'Toutes', view:'fds',
+  pin:sessionStorage.getItem('qsse_pin')||'', admin:null,
+  atab:'pdp', afilter:'traiter', dirty:false, panelOpen:false, modalOpen:false
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const fr = iso => iso ? iso.split('-').reverse().join('/') : '';
+function todayIso(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysTo(iso){ const [y,m,d]=iso.split('-').map(Number); const t=new Date(); t.setHours(0,0,0,0); return Math.round((new Date(y,m-1,d)-t)/864e5); }
+const cmp = (a,b) => String(a).localeCompare(String(b),'fr',{sensitivity:'base'});
+
+/* ================== API (GET uniquement) ================== */
+async function api(action, params={}){
+  const u = new URL(API_URL);
+  u.searchParams.set('action', action);
+  for (const [k,v] of Object.entries(params)) u.searchParams.set(k, typeof v==='object' ? JSON.stringify(v) : v);
+  const r = await fetch(u.toString());
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Erreur serveur');
+  return j;
+}
+
+function toast(msg, ms=2600){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, ms); }
+function setSync(msg){ $('#sync').textContent = msg; }
+
+/* ================== CHARGEMENT ================== */
+function loadCache(){
+  try{ const c = JSON.parse(localStorage.getItem('qsse_public')); if(c){ S.data=c; renderAll(); } }catch(e){}
+}
+async function refresh(){
+  if (!S.data) { $('#fdsList').innerHTML = $('#pdpList').innerHTML = '<div class="spinner"></div>'; }
+  setSync('Mise à jour…');
+  try{
+    const j = await api('data');
+    S.data = j;
+    try{ localStorage.setItem('qsse_public', JSON.stringify(j)); }catch(e){}
+    setSync('');
+    renderAll();
+  }catch(e){
+    if (S.data) setSync('Données enregistrées sur le téléphone');
+    else {
+      setSync('');
+      const msg = `<div class="empty"><b>Connexion impossible</b>Vérifiez le réseau puis rouvrez la page.</div>`;
+      $('#fdsList').innerHTML = $('#pdpList').innerHTML = msg;
+    }
+  }
+}
+function renderAll(){ renderChips(); renderFds(); renderPdp(); }
+
+/* ================== NAVIGATION ================== */
+function showView(v){
+  S.view = v;
+  ['fds','pdp','admin'].forEach(x => $('#view-'+x).hidden = x!==v);
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view===v));
+  window.scrollTo(0,0);
+  if (v==='admin') renderAdmin();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => showView(t.dataset.view));
+
+function openPanel(title, html){
+  $('#panelTitle').textContent = title;
+  $('#panelBody').innerHTML = html;
+  $('#panel').scrollTop = 0;
+  if (!S.panelOpen){ history.pushState({qsse:'panel'}, ''); S.panelOpen = true; }
+  $('#panel').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closePanelUI(){ $('#panel').hidden = true; S.panelOpen=false; S.dirty=false; document.body.style.overflow=''; }
+function openModal(html){
+  $('#modalBody').innerHTML = html;
+  if (!S.modalOpen){ history.pushState({qsse:'modal'}, ''); S.modalOpen = true; }
+  $('#modal').hidden = false;
+}
+function closeModalUI(){ $('#modal').hidden = true; S.modalOpen=false; }
+function back(){ history.back(); }
+window.addEventListener('popstate', () => {
+  if (S.modalOpen){ closeModalUI(); return; }
+  if (S.panelOpen){
+    if (S.dirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')){ history.pushState({qsse:'panel'}, ''); return; }
+    closePanelUI();
+  }
+});
+$('#panelBack').onclick = back;
+$('#modal').addEventListener('click', e => { if (e.target.id==='modal') back(); });
+window.addEventListener('beforeunload', e => { if (S.dirty){ e.preventDefault(); e.returnValue=''; } });
+
+/* ================== FDS ================== */
+function fdsOf(){ return (S.data && S.data.fds) || []; }
+function renderChips(){
+  if (!S.data) return;
+  const all = fdsOf();
+  const fams = ['Toutes', ...S.data.familles];
+  $('#famChips').innerHTML = fams.map(f => {
+    const n = f==='Toutes' ? all.length : all.filter(x=>x.famille===f).length;
+    return `<button class="chip" data-fam="${esc(f)}" aria-pressed="${f===S.fam}">${esc(f)}<span class="n">${n}</span></button>`;
+  }).join('');
+  $('#famChips').querySelectorAll('.chip').forEach(c => c.onclick = () => { S.fam=c.dataset.fam; renderChips(); renderFds(); });
+}
+function renderFds(){
+  if (!S.data) return;
+  const q = norm($('#fdsSearch').value.trim());
+  const items = fdsOf().filter(f => (S.fam==='Toutes' || f.famille===S.fam) &&
+    (!q || norm([f.nom,f.utilite,f.fabricant,f.famille].join(' ')).includes(q)));
+  if (!fdsOf().length){ $('#fdsList').innerHTML = `<div class="empty"><b>Aucun produit pour l’instant</b>Les produits s’ajoutent depuis l’espace gestion.</div>`; return; }
+  if (!items.length){ $('#fdsList').innerHTML = `<div class="empty"><b>Aucun produit trouvé</b>Essayez le nom commercial, l’utilité ou le fabricant.</div>`; return; }
+  const order = [...S.data.familles];
+  const groups = {};
+  items.forEach(f => (groups[f.famille] = groups[f.famille] || []).push(f));
+  Object.keys(groups).forEach(g => { if (!order.includes(g)) order.push(g); });
+  $('#fdsList').innerHTML = order.filter(g => groups[g]).map(g => `
+    <div class="group-h">${esc(g)}</div>
+    <div class="list">${groups[g].sort((a,b)=>cmp(a.nom,b.nom)).map(f => `
+      <button class="row" data-fds="${esc(f.id)}">
+        <div class="row-main"><div class="row-title">${esc(f.nom)}</div><div class="row-sub">${esc(f.utilite)}</div><div class="row-sub">${esc(f.fabricant)}</div></div>
+        <div class="mini">${(f.pictos||'').split(',').filter(Boolean).slice(0,4).map(c=>picto(c.trim(),28)).join('')}</div>
+      </button>`).join('')}
+    </div>`).join('');
+  $('#fdsList').querySelectorAll('[data-fds]').forEach(b => b.onclick = () => showFds(b.dataset.fds));
+}
+$('#fdsSearch').addEventListener('input', renderFds);
+
+function fdsDetailHtml(f){
+  const pictos = (f.pictos||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const m = norm(f.mention);
+  let h = `<h1 class="title">${esc(f.nom)}</h1>`;
+  if (f.utilite) h += `<p class="lead">${esc(f.utilite)}</p>`;
+  h += `<p class="muted">${esc([f.fabricant, f.famille].filter(Boolean).join(', '))}</p>`;
+  if (m==='danger') h += `<div class="mention danger">DANGER</div>`;
+  if (m==='attention') h += `<div class="mention attention">ATTENTION</div>`;
+  h += `<div class="card"><h3>Pictogrammes de danger</h3>${pictos.length
+        ? `<div class="pictos">${pictos.map(c=>`<div class="picto">${picto(c,78)}${esc(GHS[c]?GHS[c].l:c)}</div>`).join('')}</div>`
+        : '<p class="muted">Aucun pictogramme de danger.</p>'}</div>`;
+  h += `<div class="card"><h3>EPI recommandés</h3>${f.epi ? `<p class="pre">${esc(f.epi)}</p>` : '<p class="muted">Non renseigné : consultez la FDS.</p>'}</div>`;
+  if (f.phrasesH) h += `<div class="card"><h3>Mentions de danger</h3><p class="pre">${esc(f.phrasesH)}</p></div>`;
+  if (f.secours) h += `<div class="card"><h3>Premiers secours</h3><p class="pre">${esc(f.secours)}</p></div>`;
+  h += f.lien
+    ? `<a class="btn" href="${esc(f.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir la FDS</a>`
+    : `<span class="btn" aria-disabled="true">FDS non liée</span>`;
+  return h;
+}
+function showFds(id){ const f = fdsOf().find(x=>x.id===id); if (f) openPanel('Fiche de données de sécurité', fdsDetailHtml(f)); }
+const ICON_DOC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4" /></svg>';
+
+/* ================== PDP (techniciens) ================== */
+function pdpOf(){ return (S.data && S.data.pdp) || []; }
+function validityHtml(p){
+  if (p.nonConcerne) return `<span class="validity grey">Pas de plan de prévention requis</span>`;
+  if (!p.fin) return `<span class="validity grey">Validité non connue</span>`;
+  if (daysTo(p.fin) < 0) return `<span class="validity bad">Expiré depuis le ${fr(p.fin)}</span>`;
+  return `<span class="validity">Valide ${p.debut ? 'du '+fr(p.debut)+' ' : ''}jusqu’au ${fr(p.fin)}</span>`;
+}
+function renderPdp(){
+  if (!S.data) return;
+  const q = norm($('#pdpSearch').value.trim());
+  const items = pdpOf().filter(p => !q || norm([p.client,p.site,p.secteur,p.numero,p.nature].join(' ')).includes(q));
+  if (!items.length){ $('#pdpList').innerHTML = `<div class="empty"><b>Aucun client trouvé</b>Essayez le nom du client, du site ou le n° de PDP.</div>`; return; }
+  const clients = {};
+  items.forEach(p => (clients[p.client] = clients[p.client] || []).push(p));
+  $('#pdpList').innerHTML = `<div class="list" style="margin-top:4px">${Object.keys(clients).sort(cmp).map(c => {
+    const l = clients[c];
+    const sites = [...new Set(l.map(p=>[p.site,p.secteur].filter(Boolean).join(', ')).filter(Boolean))];
+    const sub = sites.length ? sites.join(' / ') : (l.length>1 ? l.length+' plans de prévention' : '');
+    return `<button class="row" data-client="${esc(c)}"><div class="row-main"><div class="row-title">${esc(c)}</div>${sub?`<div class="row-sub">${esc(sub)}</div>`:''}</div><span class="chev">›</span></button>`;
+  }).join('')}</div>`;
+  $('#pdpList').querySelectorAll('[data-client]').forEach(b => b.onclick = () => showClient(b.dataset.client));
+}
+$('#pdpSearch').addEventListener('input', renderPdp);
+
+function showClient(client){
+  const l = pdpOf().filter(p=>p.client===client)
+    .sort((a,b)=>cmp(a.site,b.site)||cmp(a.secteur,b.secteur)||cmp(a.numero,b.numero));
+  let h = `<h1 class="title">${esc(client)}</h1>`;
+  let last = null;
+  l.forEach(p => {
+    const where = [p.site,p.secteur].filter(Boolean).join(', ');
+    if (where && where!==last){ h += `<div class="pdp-h">${esc(where)}</div>`; last = where; }
+    h += `<div class="card">
+      <div class="lead"><b>${p.numero ? 'PDP '+esc(p.numero) : 'N° de PDP non connu'}</b></div>
+      <div style="margin:4px 0 10px">${validityHtml(p)}</div>
+      ${p.nature ? `<p class="pre">${esc(p.nature)}</p>` : ''}
+      ${p.nonConcerne ? '' : (p.lien
+        ? `<a class="btn" href="${esc(p.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir le PDP</a>`
+        : `<span class="btn secondary" aria-disabled="true">Fichier non disponible</span>`)}
+    </div>`;
+  });
+  openPanel('Plans de prévention', h);
+}
+
+/* ================== ACCÈS GESTION ================== */
+$('#lockBtn').onclick = () => {
+  if (S.pin){ showView('admin'); return; }
+  openModal(`<h2>Espace gestion</h2><p class="muted">Saisissez le code à 4 chiffres.</p>
+    <input id="pinInput" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Code">
+    <div class="err" id="pinErr"></div>`);
+  const inp = $('#pinInput'); inp.focus();
+  inp.oninput = async () => {
+    inp.value = inp.value.replace(/\D/g,'').slice(0,4);
+    if (inp.value.length < 4) { $('#pinErr').textContent=''; return; }
+    inp.disabled = true; $('#pinErr').textContent = '';
+    try{
+      await api('login', {pin:inp.value});
+      S.pin = inp.value; sessionStorage.setItem('qsse_pin', S.pin);
+      $('#adminTab').hidden = false;
+      back(); showView('admin');
+    }catch(e){
+      $('#pinErr').textContent = e.message==='Code incorrect' ? 'Code incorrect' : 'Connexion impossible';
+      inp.disabled=false; inp.value=''; inp.focus();
+    }
+  };
+};
+if (S.pin) $('#adminTab').hidden = false;
+
+document.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => {
+  S.atab = b.dataset.atab;
+  document.querySelectorAll('[data-atab]').forEach(x => x.setAttribute('aria-pressed', x===b));
+  renderAdmin(false);
+});
+
+async function loadAdmin(){
+  $('#adminBody').innerHTML = '<div class="spinner"></div>';
+  try{ S.admin = await api('admin', {pin:S.pin}); }
+  catch(e){
+    if (e.message==='Code incorrect'){ S.pin=''; sessionStorage.removeItem('qsse_pin'); $('#adminTab').hidden=true; showView('fds'); toast('Le code a changé : saisissez-le à nouveau.'); return false; }
+    $('#adminBody').innerHTML = `<div class="empty"><b>Connexion impossible</b>${esc(e.message)}</div>`; return false;
+  }
+  return true;
+}
+async function renderAdmin(reload=true){
+  if (reload || !S.admin){ if (!(await loadAdmin())) return; }
+  S.atab==='pdp' ? renderAdminPdp() : renderAdminFds();
+}
+
+/* ---------- Gestion PDP ---------- */
+const ST = {
+  expire:{l:'Expiré',c:'b-bad'}, renouv:{l:'À renouveler',c:'b-warn'}, envoye:{l:'Envoyé au client',c:'b-info'},
+  inconnu:{l:'Non connu',c:'b-grey'}, valide:{l:'Valide',c:'b-ok'}, nc:{l:'Non concerné',c:'b-grey'}
+};
+function statut(p){
+  const seuil = S.admin.seuil;
+  if (p.nonConcerne) return 'nc';
+  if (!p.fin) return 'inconnu';
+  const j = daysTo(p.fin);
+  if (j < 0) return 'expire';
+  if (j <= seuil) return p.renouvEnvoye ? 'envoye' : 'renouv';
+  return 'valide';
+}
+const FILTERS = [
+  ['traiter','À traiter', s => s==='expire'||s==='renouv'],
+  ['envoye','Envoyé au client', s => s==='envoye'],
+  ['inconnu','Non connu', s => s==='inconnu'],
+  ['valide','Valide', s => s==='valide'],
+  ['nc','Non concerné', s => s==='nc'],
+  ['tous','Tous', () => true]
+];
+function renderAdminPdp(){
+  const all = S.admin.pdp.map(p => ({...p, st:statut(p)}));
+  const f = FILTERS.find(x=>x[0]===S.afilter) || FILTERS[0];
+  const rank = {expire:0,renouv:1,envoye:2,inconnu:3,valide:4,nc:5};
+  const list = all.filter(p=>f[2](p.st)).sort((a,b)=> rank[a.st]-rank[b.st] || cmp(a.fin||'9999',b.fin||'9999') || cmp(a.client,b.client));
+  let h = `<div class="chips">${FILTERS.map(x => `<button class="chip" data-af="${x[0]}" aria-pressed="${x[0]===S.afilter}">${x[1]}<span class="n">${all.filter(p=>x[2](p.st)).length}</span></button>`).join('')}</div>`;
+  h += `<div class="admin-tools"><button class="btn" id="addPdp">Ajouter un PDP</button><button class="btn secondary" id="runRelance">Vérifier les relances</button></div>`;
+  h += list.length ? `<div class="list" style="margin-top:12px">${list.map(p => {
+    const j = p.fin ? daysTo(p.fin) : null;
+    const when = j===null ? '' : (j<0 ? `depuis ${-j} j` : `J-${j}`);
+    return `<button class="row" data-pid="${esc(p.id)}">
+      <div class="row-main"><div class="row-title">${esc([p.client,p.site,p.secteur].filter(Boolean).join(', '))}</div>
+      <div class="row-sub">${p.numero ? 'PDP '+esc(p.numero) : 'N° non connu'}${p.fin ? ', fin le '+fr(p.fin) : ''}</div></div>
+      <div class="side"><span class="badge ${ST[p.st].c}">${ST[p.st].l}</span>${p.st!=='valide'&&p.st!=='nc'?when:''}</div>
+    </button>`; }).join('')}</div>`
+    : `<div class="empty"><b>Rien dans cette catégorie</b>${S.afilter==='traiter' ? 'Aucun PDP n’arrive à échéance dans les '+S.admin.seuil+' prochains jours.' : ''}</div>`;
+  $('#adminBody').innerHTML = h;
+  $('#adminBody').querySelectorAll('[data-af]').forEach(b => b.onclick = () => { S.afilter=b.dataset.af; renderAdminPdp(); });
+  $('#adminBody').querySelectorAll('[data-pid]').forEach(b => b.onclick = () => editPdp(b.dataset.pid));
+  $('#addPdp').onclick = () => editPdp(null);
+  $('#runRelance').onclick = async (e) => {
+    e.target.disabled = true;
+    try{ const r = await api('relances',{pin:S.pin}); toast(r.envoyes ? r.envoyes+' PDP relancé(s) par mail' : 'Aucune nouvelle relance à envoyer'); renderAdmin(); }
+    catch(err){ toast(err.message); e.target.disabled=false; }
+  };
+}
+
+function datalist(id, values){ return `<datalist id="${id}">${[...new Set(values.filter(Boolean))].sort(cmp).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`; }
+function fld(label, name, value, opts={}){
+  const t = opts.type || 'text';
+  const attrs = `id="f_${name}" name="${name}" class="input" ${opts.list?`list="${opts.list}"`:''} ${opts.req?'required':''} ${opts.ph?`placeholder="${esc(opts.ph)}"`:''}`;
+  const input = t==='textarea' ? `<textarea ${attrs}>${esc(value)}</textarea>` : `<input type="${t}" ${attrs} value="${esc(value)}">`;
+  const body = opts.after ? `<div class="inline">${input}${opts.after}</div>` : input;
+  return `<div class="field"><label for="f_${name}">${label}</label>${body}${opts.hint?`<div class="hint">${opts.hint}</div>`:''}</div>`;
+}
+function formVals(){
+  const o = {};
+  $('#panelBody').querySelectorAll('[name]').forEach(el => {
+    if (el.type==='checkbox' && el.dataset.multi) { if (el.checked) (o[el.name] = o[el.name] || []).push(el.value); }
+    else if (el.type==='checkbox') o[el.name] = el.checked;
+    else o[el.name] = el.value.trim();
+  });
+  return o;
+}
+function watchDirty(){ $('#panelBody').querySelectorAll('input,textarea,select').forEach(el => el.addEventListener('input', () => S.dirty = true)); }
+function mailtoClient(p){
+  if (!p.contact) return '';
+  const to = p.contact.split(/[;,\s]+/).filter(Boolean).join(',');
+  const sujet = 'Mise à jour du plan de prévention — PAGANETTI THERMIQUE' + (p.numero ? ' (PDP '+p.numero+')' : '');
+  const corps = `Bonjour,\n\nLe plan de prévention ${p.numero ? 'n° '+p.numero+' ' : ''}concernant nos interventions${p.site ? ' sur le site de '+p.site : ''}${p.fin ? ' arrive à échéance le '+fr(p.fin) : ' doit être mis à jour'}.\n\nPourriez-vous nous indiquer les modalités de sa mise à jour (date d’inspection commune, documents à fournir) ?\n\nCordialement,\n\nAlan BELLET\nResponsable QSSE — PAGANETTI THERMIQUE`;
+  return `mailto:${to}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+}
+
+function editPdp(id){
+  const p = id ? S.admin.pdp.find(x=>x.id===id) : {client:'',site:'',secteur:'',numero:'',debut:'',fin:'',nature:'',lien:'',contact:'',envoi:'',retour:'',renouvEnvoye:'',nonConcerne:false,remarques:''};
+  const all = S.admin.pdp;
+  const st = id ? statut(p) : null;
+  let h = id ? `<p style="margin:0 0 4px"><span class="badge ${ST[st].c}">${ST[st].l}</span></p>` : '';
+  h += datalist('dlClient', all.map(x=>x.client)) + datalist('dlSite', all.map(x=>x.site)) + datalist('dlSecteur', all.map(x=>x.secteur));
+  h += fld('Client *','client',p.client,{list:'dlClient',req:true});
+  h += `<div class="two">${fld('Site','site',p.site,{list:'dlSite'})}${fld('Secteur','secteur',p.secteur,{list:'dlSecteur'})}</div>`;
+  h += fld('N° de PDP','numero',p.numero,{hint:'Laisser vide si non connu.'});
+  h += `<div class="two">${fld('Date de début','debut',p.debut,{type:'date'})}${fld('Date de fin','fin',p.fin,{type:'date'})}</div>`;
+  h += fld('Nature des travaux','nature',p.nature,{type:'textarea'});
+  h += fld('Lien du fichier PDP','lien',p.lien,{type:'url',ph:'https://drive.google.com/…',
+        after: S.admin.drivePdp ? `<button type="button" class="mini-btn" id="pickPdp">Drive</button>` : ''});
+  h += `<div class="card"><h3>Encadrement</h3>`;
+  h += fld('Contact client','contact',p.contact,{hint:'Plusieurs adresses : séparer par un point-virgule.'});
+  h += fld('Demande de mise à jour envoyée le','renouvEnvoye',p.renouvEnvoye,{type:'date',
+        after:`<button type="button" class="mini-btn" id="setToday">Aujourd’hui</button>`,
+        hint:'Passe le PDP en « Envoyé au client ». Effacé automatiquement quand la date de fin change.'});
+  h += `<div class="two">${fld('Envoyé au client le','envoi',p.envoi,{type:'date'})}${fld('Retour client le','retour',p.retour,{type:'date'})}</div>`;
+  h += `<div class="hint" style="margin-top:6px">Preuve de transmission du PDP en cours.</div>`;
+  h += fld('Remarques','remarques',p.remarques,{type:'textarea'});
+  h += `<label class="check"><input type="checkbox" name="nonConcerne" ${p.nonConcerne?'checked':''}> Non concerné (pas de PDP requis)</label>`;
+  h += `</div>`;
+  const mt = id ? mailtoClient(p) : '';
+  if (mt) h += `<a class="btn secondary" href="${esc(mt)}">Préparer le mail au client</a>`;
+  h += `<button class="btn" id="savePdp">Enregistrer</button>`;
+  if (id) h += `<button class="btn danger" id="delPdp">Supprimer ce PDP</button>`;
+  openPanel(id ? 'Modifier le PDP' : 'Nouveau PDP', h);
+  watchDirty();
+  $('#setToday').onclick = () => { $('#f_renouvEnvoye').value = todayIso(); S.dirty = true; };
+  if ($('#pickPdp')) $('#pickPdp').onclick = () => drivePicker('pdp', f => { $('#f_lien').value = f.url; S.dirty = true; });
+  $('#savePdp').onclick = async (e) => {
+    const v = formVals();
+    if (!v.client){ toast('Le client est obligatoire'); return; }
+    if (v.debut && v.fin && v.fin < v.debut){ toast('La date de fin précède la date de début'); return; }
+    e.target.disabled = true; e.target.textContent = 'Enregistrement…';
+    try{ await api('savePdp',{pin:S.pin, p:{...v, id:id||''}}); S.dirty=false; back(); toast('PDP enregistré'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); e.target.disabled=false; e.target.textContent='Enregistrer'; }
+  };
+  if (id) $('#delPdp').onclick = async () => {
+    if (!confirm('Supprimer définitivement ce PDP de l’outil ?')) return;
+    try{ await api('deletePdp',{pin:S.pin,id}); S.dirty=false; back(); toast('PDP supprimé'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); }
+  };
+}
+
+/* ---------- Gestion FDS ---------- */
+function renderAdminFds(){
+  const q = norm(S.afds || '');
+  const list = S.admin.fds.filter(f => !q || norm([f.nom,f.utilite,f.fabricant,f.famille].join(' ')).includes(q))
+    .sort((a,b)=>cmp(a.famille,b.famille)||cmp(a.nom,b.nom));
+  let h = `<input class="search" id="aFdsSearch" type="search" placeholder="Rechercher un produit…" value="${esc(S.afds||'')}" aria-label="Rechercher un produit">`;
+  h += `<div class="admin-tools" style="margin-top:12px"><button class="btn" id="addFds">Ajouter un produit</button></div>`;
+  h += list.length ? `<div class="list" style="margin-top:12px">${list.map(f => `
+    <button class="row" data-fid="${esc(f.id)}"><div class="row-main"><div class="row-title">${esc(f.nom)}</div>
+    <div class="row-sub">${esc(f.famille)}${f.fabricant?', '+esc(f.fabricant):''}</div></div>
+    <div class="side">${f.lien ? '' : '<span class="badge b-warn">FDS non liée</span>'}</div></button>`).join('')}</div>`
+    : `<div class="empty"><b>${S.admin.fds.length ? 'Aucun produit trouvé' : 'Aucun produit pour l’instant'}</b>${S.admin.fds.length ? '' : 'Ajoutez votre premier produit.'}</div>`;
+  $('#adminBody').innerHTML = h;
+  const s = $('#aFdsSearch');
+  s.oninput = () => { S.afds = s.value; const pos=s.selectionStart; renderAdminFds(); const n=$('#aFdsSearch'); n.focus(); n.setSelectionRange(pos,pos); };
+  $('#adminBody').querySelectorAll('[data-fid]').forEach(b => b.onclick = () => editFds(b.dataset.fid));
+  $('#addFds').onclick = () => editFds(null);
+}
+
+function editFds(id){
+  const f = id ? S.admin.fds.find(x=>x.id===id) : {famille:'',utilite:'',nom:'',fabricant:'',pictos:'',mention:'',epi:'',phrasesH:'',secours:'',lien:''};
+  const sel = (f.pictos||'').split(',').map(s=>s.trim());
+  let h = '';
+  h += fld('Lien de la FDS','lien',f.lien,{type:'url',ph:'https://drive.google.com/…',
+        after: S.admin.driveFds ? `<button type="button" class="mini-btn" id="pickFds">Drive</button>` : '',
+        hint: S.admin.driveFds ? 'Choisir le fichier dans le Drive remplit aussi l’utilité, le nom et le fabricant.' : ''});
+  h += `<div class="field"><label for="f_famille">Famille *</label><select id="f_famille" name="famille" class="input">
+        <option value="">Choisir…</option>${S.admin.familles.map(x=>`<option ${x===f.famille?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
+  h += fld('Utilité du produit','utilite',f.utilite,{ph:'Détecteur de fuite'});
+  h += `<div class="two">${fld('Nom commercial *','nom',f.nom,{ph:'DF79',req:true})}${fld('Fabricant','fabricant',f.fabricant,{ph:'TECHNOUTIL'})}</div>`;
+  h += `<div class="field"><label>Pictogrammes de danger</label><div class="picto-pick">${Object.keys(GHS).map(c => `
+        <label><input type="checkbox" name="pictos" data-multi="1" value="${c}" ${sel.includes(c)?'checked':''}><span>${picto(c,52)}<br>${esc(GHS[c].l)}</span></label>`).join('')}</div></div>`;
+  h += `<div class="field"><label for="f_mention">Mention d’avertissement</label><select id="f_mention" name="mention" class="input">
+        ${['','Attention','Danger'].map(x=>`<option value="${x}" ${norm(x)===norm(f.mention)?'selected':''}>${x||'Aucune'}</option>`).join('')}</select></div>`;
+  h += fld('EPI recommandés','epi',f.epi,{type:'textarea',ph:'Gants nitrile\nLunettes de protection',hint:'Un EPI par ligne.'});
+  h += fld('Mentions de danger (facultatif)','phrasesH',f.phrasesH,{type:'textarea',ph:'H222 Aérosol extrêmement inflammable'});
+  h += fld('Premiers secours (facultatif)','secours',f.secours,{type:'textarea'});
+  h += `<button class="btn" id="saveFds">Enregistrer</button>`;
+  if (id) h += `<button class="btn danger" id="delFds">Supprimer ce produit</button>`;
+  openPanel(id ? 'Modifier le produit' : 'Nouveau produit', h);
+  watchDirty();
+  if ($('#pickFds')) $('#pickFds').onclick = () => drivePicker('fds', file => {
+    $('#f_lien').value = file.url;
+    const parts = file.name.replace(/\.[a-z0-9]{2,4}$/i,'').split(/\s+[–—-]\s+/).map(s=>s.trim());
+    if (parts.length >= 3){
+      if (!$('#f_utilite').value) $('#f_utilite').value = parts[0];
+      if (!$('#f_nom').value) $('#f_nom').value = parts.slice(1,-1).join(' - ');
+      if (!$('#f_fabricant').value) $('#f_fabricant').value = parts[parts.length-1];
+    } else if (!$('#f_nom').value) $('#f_nom').value = parts.join(' - ');
+    const top = norm(file.folder.split(' / ')[0]);
+    const fam = S.admin.familles.find(x => norm(x)===top || (top && (norm(x).startsWith(top) || top.startsWith(norm(x)))));
+    if (fam && !$('#f_famille').value) $('#f_famille').value = fam;
+    S.dirty = true;
+  });
+  $('#saveFds').onclick = async (e) => {
+    const v = formVals();
+    v.pictos = (v.pictos||[]).join(',');
+    if (!v.famille || !v.nom){ toast('Famille et nom commercial obligatoires'); return; }
+    e.target.disabled = true; e.target.textContent = 'Enregistrement…';
+    try{ await api('saveFds',{pin:S.pin, p:{...v, id:id||''}}); S.dirty=false; back(); toast('Produit enregistré'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); e.target.disabled=false; e.target.textContent='Enregistrer'; }
+  };
+  if (id) $('#delFds').onclick = async () => {
+    if (!confirm('Supprimer ce produit de l’outil ? Le fichier Drive n’est pas supprimé.')) return;
+    try{ await api('deleteFds',{pin:S.pin,id}); S.dirty=false; back(); toast('Produit supprimé'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); }
+  };
+}
+
+/* ---------- Sélecteur de fichiers Drive ---------- */
+const driveId = url => (String(url).match(/\/d\/([\w-]{20,})/) || String(url).match(/[?&]id=([\w-]{20,})/) || [])[1] || '';
+async function drivePicker(type, onPick){
+  openModal(`<h2>Choisir dans le Drive</h2><div class="spinner"></div>`);
+  let files;
+  try{ files = (await api('drive',{pin:S.pin,type})).files; }
+  catch(e){ $('#modalBody').innerHTML = `<h2>Choisir dans le Drive</h2><p class="err">${esc(e.message)}</p>`; return; }
+  const used = new Set((type==='pdp' ? S.admin.pdp : S.admin.fds).map(x=>driveId(x.lien)).filter(Boolean));
+  const draw = q => {
+    const l = files.filter(f => !q || norm(f.folder+' '+f.name).includes(norm(q)));
+    $('#driveList').innerHTML = l.length ? l.map(f => `<button class="drive-item ${used.has(f.id)?'used':''}" data-id="${esc(f.id)}">${esc(f.name)}<small>${esc(f.folder||'Dossier principal')}${used.has(f.id)?', déjà liée':''}</small></button>`).join('')
+      : '<div class="empty">Aucun fichier trouvé.</div>';
+    $('#driveList').querySelectorAll('[data-id]').forEach(b => b.onclick = () => { const f = files.find(x=>x.id===b.dataset.id); back(); onPick(f); });
+  };
+  $('#modalBody').innerHTML = `<h2>Choisir dans le Drive</h2><input class="search" id="driveSearch" type="search" placeholder="Rechercher un fichier…" style="margin:10px 0"><div id="driveList"></div>`;
+  $('#driveSearch').oninput = e => draw(e.target.value);
+  draw('');
+}
+
+/* ================== DÉMARRAGE ================== */
+const setHH = () => document.documentElement.style.setProperty('--hh', $('.top').offsetHeight+'px');
+setHH(); window.addEventListener('resize', setHH);
+loadCache();
+refresh();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible') refresh(); });
+</script>
+</body>
+</html>
