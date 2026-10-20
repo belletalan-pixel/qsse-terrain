@@ -86,7 +86,13 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 .lead{font-size:17px;margin:0 0 2px}
 .muted{color:var(--muted);font-size:14px;margin:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px}
-.card h3{margin:0 0 8px;font-size:15px;color:var(--muted)}
+.card h3{margin:0 0 8px;font-size:15px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ref{font-size:12px;font-weight:600;color:var(--brand);white-space:nowrap}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+.refs{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px;margin:0}
+.refs dt{font-weight:700;color:var(--brand);white-space:nowrap}
+.refs dd{margin:0}
+.ref-box{background:var(--chip);border-radius:12px;padding:12px 14px;font-size:13px;margin-top:4px}
 .pre{white-space:pre-wrap;margin:0}
 
 .mention{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:8px;font-weight:800;font-size:15px;letter-spacing:.04em}
@@ -235,6 +241,22 @@ const GHS = {
   GHS08:{l:'Danger pour la santé', g:'<circle cx="50" cy="30" r="7"/><path d="M35 76c0-20 4-34 15-34s15 14 15 34z"/><path d="M50 50l2.6 6 6.4.6-4.9 4.2 1.5 6.3L50 63.8l-5.6 3.3 1.5-6.3-4.9-4.2 6.4-.6z" fill="#fff"/>'},
   GHS09:{l:'Dangereux pour l’environnement', g:'<path d="M35 70V40M35 52l-8-8M35 46l7-8M35 58l6-4" stroke="#000" stroke-width="3.5" stroke-linecap="round" fill="none"/><rect x="30" y="70" width="40" height="3"/><path d="M48 61c6-7 15-7 19 0-4 7-13 7-19 0zM67 61l6-5v10z"/>'}
 };
+/* ================== PICTOGRAMMES EPI (obligation, fond bleu) ================== */
+const EPI = {
+  LUNETTES:{l:'Lunettes de protection', g:'<path d="M20 44h60v14a6 6 0 0 1-6 6H58l-4-6h-8l-4 6H26a6 6 0 0 1-6-6z"/><path d="M14 48h6M80 48h6" stroke="#fff" stroke-width="4" stroke-linecap="round"/>'},
+  ECRAN:{l:'Écran facial', g:'<rect x="30" y="24" width="40" height="7" rx="2"/><path d="M28 35h44v26c0 10-10 17-22 17S28 71 28 61z" fill-opacity=".85"/>'},
+  GANTS:{l:'Gants de protection', g:'<rect x="36" y="44" width="30" height="24" rx="6"/><rect x="36" y="26" width="6" height="24" rx="3"/><rect x="44" y="21" width="6" height="28" rx="3"/><rect x="52" y="23" width="6" height="26" rx="3"/><rect x="60" y="29" width="6" height="20" rx="3"/><path d="M36 56l-9-11a4 4 0 0 1 6-5l7 8z"/><rect x="38" y="68" width="26" height="11" rx="2"/>'},
+  FROID:{l:'Gants contre le froid', g:'<g transform="translate(8 2)"><rect x="36" y="44" width="30" height="24" rx="6"/><rect x="36" y="26" width="6" height="24" rx="3"/><rect x="44" y="21" width="6" height="28" rx="3"/><rect x="52" y="23" width="6" height="26" rx="3"/><rect x="60" y="29" width="6" height="20" rx="3"/><rect x="38" y="68" width="26" height="11" rx="2"/></g><path d="M27 22v24M17 28l20 12M17 40l20-12" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>'},
+  VETEMENT:{l:'Vêtement de protection', g:'<path d="M38 20h24l13 11-7 10-6-4v41H38V37l-6 4-7-10z"/><path d="M50 22v56" stroke="#005387" stroke-width="2"/>'},
+  RESPI:{l:'Protection respiratoire', g:'<path d="M30 40c10-7 30-7 40 0v14c0 12-10 21-20 21s-20-9-20-21z"/><circle cx="38" cy="60" r="6" fill="#005387"/><circle cx="62" cy="60" r="6" fill="#005387"/><path d="M30 44L16 34M70 44l14-10" stroke="#fff" stroke-width="4" stroke-linecap="round"/>'},
+  CHAUSSURES:{l:'Chaussures de sécurité', g:'<path d="M32 22h20v35l22 8a7 7 0 0 1 5 7v7H32z"/>'}
+};
+function epiPicto(code, size){
+  const p = EPI[code]; if(!p) return '';
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${p.l}"><circle cx="50" cy="50" r="47" fill="#005387"/><g fill="#fff">${p.g}</g></svg>`;
+}
+const epiCodes = s => String(s||'').split(',').map(x=>x.trim()).filter(c=>EPI[c]);
+
 function picto(code, size){
   const p = GHS[code]; if(!p) return '';
   return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${p.l}"><polygon points="50,5 95,50 50,95 5,50" fill="#fff" stroke="#E3000F" stroke-width="7"/><g fill="#000">${p.g}</g></svg>`;
@@ -372,15 +394,30 @@ function fdsDetailHtml(f){
   h += `<p class="muted">${esc([f.fabricant, f.famille].filter(Boolean).join(', '))}</p>`;
   if (m==='danger') h += `<div class="mention danger">DANGER</div>`;
   if (m==='attention') h += `<div class="mention attention">ATTENTION</div>`;
-  h += `<div class="card"><h3>Pictogrammes de danger</h3>${pictos.length
+  h += `<div class="card"><h3>Pictogrammes de danger<span class="ref">Rubrique 2.2</span></h3>${pictos.length
         ? `<div class="pictos">${pictos.map(c=>`<div class="picto">${picto(c,78)}${esc(GHS[c]?GHS[c].l:c)}</div>`).join('')}</div>`
         : '<p class="muted">Aucun pictogramme de danger.</p>'}</div>`;
-  h += `<div class="card"><h3>EPI recommandés</h3>${f.epi ? `<p class="pre">${esc(f.epi)}</p>` : '<p class="muted">Non renseigné : consultez la FDS.</p>'}</div>`;
-  if (f.phrasesH) h += `<div class="card"><h3>Mentions de danger</h3><p class="pre">${esc(f.phrasesH)}</p></div>`;
-  if (f.secours) h += `<div class="card"><h3>Premiers secours</h3><p class="pre">${esc(f.secours)}</p></div>`;
+  const epis = epiCodes(f.epi);
+  h += `<div class="card"><h3>EPI à porter<span class="ref">Rubrique 8.2.2</span></h3>${epis.length
+        ? `<div class="pictos">${epis.map(c=>`<div class="picto">${epiPicto(c,72)}${esc(EPI[c].l)}</div>`).join('')}</div>
+           <p class="note">Le type exact de chaque EPI (matériau et épaisseur des gants, type de filtre du masque, norme) est indiqué dans la FDS, rubrique 8.2.2.</p>`
+        : '<p class="muted">Non renseigné : consultez la FDS, rubrique 8.2.2.</p>'}</div>`;
+  if (f.phrasesH) h += `<div class="card"><h3>Mentions de danger<span class="ref">Rubrique 2.2</span></h3><p class="pre">${esc(f.phrasesH)}</p></div>`;
+  if (f.secours) h += `<div class="card"><h3>Premiers secours<span class="ref">Rubrique 4</span></h3><p class="pre">${esc(f.secours)}</p></div>`;
   h += f.lien
     ? `<a class="btn" href="${esc(f.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir la FDS</a>`
     : `<span class="btn" aria-disabled="true">FDS non liée</span>`;
+  h += `<div class="card"><h3>Où trouver l’information dans la FDS</h3><dl class="refs">
+    <dt>1.4</dt><dd>Numéro d’appel d’urgence</dd>
+    <dt>2.2</dt><dd>Pictogrammes, mention d’avertissement, mentions de danger (H) et conseils de prudence (P)</dd>
+    <dt>4</dt><dd>Premiers secours</dd>
+    <dt>5</dt><dd>Lutte contre l’incendie</dd>
+    <dt>6</dt><dd>Fuite ou déversement accidentel</dd>
+    <dt>7</dt><dd>Manipulation et stockage</dd>
+    <dt>8.2.2</dt><dd>EPI : yeux et visage, mains, peau, voies respiratoires, dangers thermiques</dd>
+    <dt>13</dt><dd>Élimination des déchets</dd>
+    <dt>16</dt><dd>Texte complet des mentions H</dd>
+  </dl><p class="note">Numérotation de l’annexe II du règlement REACH, modifiée par le règlement (UE) 2020/878.</p></div>`;
   return h;
 }
 function showFds(id){ const f = fdsOf().find(x=>x.id===id); if (f) openPanel('Fiche de données de sécurité', fdsDetailHtml(f)); }
@@ -618,21 +655,24 @@ function renderAdminFds(){
 function editFds(id){
   const f = id ? S.admin.fds.find(x=>x.id===id) : {famille:'',utilite:'',nom:'',fabricant:'',pictos:'',mention:'',epi:'',phrasesH:'',secours:'',lien:''};
   const sel = (f.pictos||'').split(',').map(s=>s.trim());
-  let h = '';
+  const selEpi = epiCodes(f.epi);
+  let h = `<div class="ref-box">Repères conformes à l’annexe II de REACH modifiée par le règlement (UE) 2020/878. Pensez à vérifier la date de révision en première page de la FDS.</div>`;
   h += fld('Lien de la FDS','lien',f.lien,{type:'url',ph:'https://drive.google.com/…',
         after: S.admin.driveFds ? `<button type="button" class="mini-btn" id="pickFds">Drive</button>` : '',
         hint: S.admin.driveFds ? 'Choisir le fichier dans le Drive remplit aussi l’utilité, le nom et le fabricant.' : ''});
   h += `<div class="field"><label for="f_famille">Famille *</label><select id="f_famille" name="famille" class="input">
         <option value="">Choisir…</option>${S.admin.familles.map(x=>`<option ${x===f.famille?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
-  h += fld('Utilité du produit','utilite',f.utilite,{ph:'Détecteur de fuite'});
-  h += `<div class="two">${fld('Nom commercial *','nom',f.nom,{ph:'DF79',req:true})}${fld('Fabricant','fabricant',f.fabricant,{ph:'TECHNOUTIL'})}</div>`;
-  h += `<div class="field"><label>Pictogrammes de danger</label><div class="picto-pick">${Object.keys(GHS).map(c => `
+  h += fld('Utilité du produit','utilite',f.utilite,{ph:'Détecteur de fuite',hint:'FDS rubrique 1.2 : utilisations identifiées.'});
+  h += `<div class="two">${fld('Nom commercial *','nom',f.nom,{ph:'DF79',req:true,hint:'Rubrique 1.1'})}${fld('Fabricant','fabricant',f.fabricant,{ph:'TECHNOUTIL',hint:'Rubrique 1.3'})}</div>`;
+  h += `<div class="field"><label>Pictogrammes de danger</label><div class="hint" style="margin:0 0 8px">FDS rubrique 2.2 : éléments d’étiquetage.</div><div class="picto-pick">${Object.keys(GHS).map(c => `
         <label><input type="checkbox" name="pictos" data-multi="1" value="${c}" ${sel.includes(c)?'checked':''}><span>${picto(c,52)}<br>${esc(GHS[c].l)}</span></label>`).join('')}</div></div>`;
-  h += `<div class="field"><label for="f_mention">Mention d’avertissement</label><select id="f_mention" name="mention" class="input">
+  h += `<div class="field"><label for="f_mention">Mention d’avertissement <span class="hint">(rubrique 2.2)</span></label><select id="f_mention" name="mention" class="input">
         ${['','Attention','Danger'].map(x=>`<option value="${x}" ${norm(x)===norm(f.mention)?'selected':''}>${x||'Aucune'}</option>`).join('')}</select></div>`;
-  h += fld('EPI recommandés','epi',f.epi,{type:'textarea',ph:'Gants nitrile\nLunettes de protection',hint:'Un EPI par ligne.'});
-  h += fld('Mentions de danger (facultatif)','phrasesH',f.phrasesH,{type:'textarea',ph:'H222 Aérosol extrêmement inflammable'});
-  h += fld('Premiers secours (facultatif)','secours',f.secours,{type:'textarea'});
+  h += `<div class="field"><label>EPI à porter</label><div class="hint" style="margin:0 0 8px">FDS rubrique 8.2.2 : a) yeux et visage, b) mains et peau, c) voies respiratoires, d) dangers thermiques. Le conseil de prudence P280 en rubrique 2.2 donne aussi un premier repère.</div>
+        <div class="picto-pick">${Object.keys(EPI).map(c => `
+        <label><input type="checkbox" name="epi" data-multi="1" value="${c}" ${selEpi.includes(c)?'checked':''}><span>${epiPicto(c,52)}<br>${esc(EPI[c].l)}</span></label>`).join('')}</div></div>`;
+  h += fld('Mentions de danger (facultatif)','phrasesH',f.phrasesH,{type:'textarea',ph:'H222 Aérosol extrêmement inflammable',hint:'Rubrique 2.2 (texte complet en rubrique 16).'});
+  h += fld('Premiers secours (facultatif)','secours',f.secours,{type:'textarea',hint:'Rubrique 4.1 : description des mesures de premiers secours.'});
   h += `<button class="btn" id="saveFds">Enregistrer</button>`;
   if (id) h += `<button class="btn danger" id="delFds">Supprimer ce produit</button>`;
   openPanel(id ? 'Modifier le produit' : 'Nouveau produit', h);
@@ -653,6 +693,7 @@ function editFds(id){
   $('#saveFds').onclick = async (e) => {
     const v = formVals();
     v.pictos = (v.pictos||[]).join(',');
+    v.epi = (v.epi||[]).join(',');
     if (!v.famille || !v.nom){ toast('Famille et nom commercial obligatoires'); return; }
     e.target.disabled = true; e.target.textContent = 'Enregistrement…';
     try{ await api('saveFds',{pin:S.pin, p:{...v, id:id||''}}); S.dirty=false; back(); toast('Produit enregistré'); renderAdmin(); refresh(); }
