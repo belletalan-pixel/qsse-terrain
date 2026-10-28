@@ -66,6 +66,23 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 .chev{color:var(--muted);flex:none}
 
 .empty{padding:32px 16px;text-align:center;color:var(--muted)}
+/* Numéros d'urgence */
+.sos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 6px}
+.sos a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-decoration:none;background:#C62828;color:#fff;border-radius:12px;padding:8px 4px;min-height:56px;text-align:center}
+.sos a b{font-size:20px;line-height:1.1;letter-spacing:.02em}
+.sos a span{font-size:12px;opacity:.95}
+.sos a.wide{grid-column:1/-1;min-height:52px}
+.sos a.wide b{font-size:20px;white-space:nowrap}
+.sos-note{font-size:12px;color:var(--muted);margin:0 2px 8px}
+.sos-note a{color:inherit}
+/* Appel */
+.call{flex:none;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:var(--ok);color:#fff;border-radius:12px;padding:10px 12px;font-weight:700;font-size:15px;white-space:nowrap}
+.call svg{width:18px;height:18px}
+.urg-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
+.urg-row:first-child{border-top:0}
+.ask{background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:14px 16px;margin-top:18px;text-align:center;color:var(--muted);font-size:14px}
+.ask .btn{margin-top:10px}
+.seg .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px}
 .empty b{display:block;color:var(--ink);margin-bottom:4px}
 
 /* Onglets bas */
@@ -125,7 +142,7 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 
 /* Gestion */
 .seg{display:flex;background:var(--chip);border-radius:12px;padding:4px;margin-bottom:12px}
-.seg button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font-weight:600;color:var(--muted)}
+.seg button{flex:1;font-size:14px;padding:10px 4px;border:0;background:none;padding:10px;border-radius:9px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
 .admin-tools{display:flex;gap:10px;margin:4px 0 0}
 .admin-tools .btn{margin-top:0;padding:12px;font-size:15px}
@@ -178,9 +195,23 @@ textarea.input{min-height:84px;resize:vertical}
 
 <main>
   <section id="view-fds">
+    <div class="sos" aria-label="Numéros d’urgence">
+      <a href="tel:15"><b>15</b><span>SAMU</span></a>
+      <a href="tel:18"><b>18</b><span>Pompiers</span></a>
+      <a href="tel:112"><b>112</b><span>Urgence européenne</span></a>
+      <a href="tel:0800595959" class="wide"><b>0 800 59 59 59</b><span>Centre antipoison (Lille, compétent pour la Normandie)</span></a>
+    </div>
+    <p class="sos-note">Personnes sourdes ou malentendantes : <a href="sms:114">114</a> (SMS, appli ou fax).</p>
     <div class="searchbar"><input id="fdsSearch" class="search" type="search" placeholder="Produit, utilité, fabricant…" autocomplete="off" aria-label="Rechercher un produit"></div>
     <div id="famChips" class="chips" role="group" aria-label="Familles"></div>
     <div id="fdsList"></div>
+    <div class="ask">Un produit manque ou sa FDS n’est pas dans l’outil ?
+      <button class="btn secondary" id="askFds">Demander l’ajout d’une FDS</button></div>
+  </section>
+
+  <section id="view-urg" hidden>
+    <div class="searchbar"><input id="urgSearch" class="search" type="search" placeholder="Client, site…" autocomplete="off" aria-label="Rechercher un client"></div>
+    <div id="urgList"></div>
   </section>
 
   <section id="view-pdp" hidden>
@@ -190,8 +221,10 @@ textarea.input{min-height:84px;resize:vertical}
 
   <section id="view-admin" hidden>
     <div class="seg" role="group" aria-label="Gestion">
-      <button data-atab="pdp" aria-pressed="true">Plans de prévention</button>
+      <button data-atab="pdp" aria-pressed="true">PDP</button>
       <button data-atab="fds" aria-pressed="false">FDS</button>
+      <button data-atab="urg" aria-pressed="false">Urgences</button>
+      <button data-atab="dem" aria-pressed="false">Demandes<span class="n" id="demCount" hidden></span></button>
     </div>
     <div id="adminBody"></div>
   </section>
@@ -204,7 +237,11 @@ textarea.input{min-height:84px;resize:vertical}
   </button>
   <button class="tab" data-view="pdp" role="tab" aria-selected="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h7M9 16h7" stroke-linecap="round"/></svg>
-    Plans de prévention
+    PDP
+  </button>
+  <button class="tab" data-view="urg" role="tab" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+    Urgences
   </button>
   <button class="tab" data-view="admin" role="tab" aria-selected="false" hidden id="adminTab">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
@@ -312,12 +349,12 @@ async function refresh(){
     }
   }
 }
-function renderAll(){ renderChips(); renderFds(); renderPdp(); }
+function renderAll(){ renderChips(); renderFds(); renderPdp(); renderUrg(); }
 
 /* ================== NAVIGATION ================== */
 function showView(v){
   S.view = v;
-  ['fds','pdp','admin'].forEach(x => $('#view-'+x).hidden = x!==v);
+  ['fds','pdp','urg','admin'].forEach(x => $('#view-'+x).hidden = x!==v);
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view===v));
   window.scrollTo(0,0);
   if (v==='admin') renderAdmin();
@@ -369,7 +406,7 @@ function renderFds(){
   const items = fdsOf().filter(f => (S.fam==='Toutes' || f.famille===S.fam) &&
     (!q || norm([f.nom,f.utilite,f.fabricant,f.famille].join(' ')).includes(q)));
   if (!fdsOf().length){ $('#fdsList').innerHTML = `<div class="empty"><b>Aucun produit pour l’instant</b>Les produits s’ajoutent depuis l’espace gestion.</div>`; return; }
-  if (!items.length){ $('#fdsList').innerHTML = `<div class="empty"><b>Aucun produit trouvé</b>Essayez le nom commercial, l’utilité ou le fabricant.</div>`; return; }
+  if (!items.length){ $('#fdsList').innerHTML = `<div class="empty"><b>Aucun produit trouvé</b>Essayez le nom commercial, l’utilité ou le fabricant.<button class="btn" id="askFds2">Demander l’ajout de « ${esc($('#fdsSearch').value.trim())} »</button></div>`; $('#askFds2').onclick = () => openDemande($('#fdsSearch').value.trim()); return; }
   const order = [...S.data.familles];
   const groups = {};
   items.forEach(f => (groups[f.famille] = groups[f.famille] || []).push(f));
@@ -452,6 +489,8 @@ function showClient(client){
   const l = pdpOf().filter(p=>p.client===client)
     .sort((a,b)=>cmp(a.site,b.site)||cmp(a.secteur,b.secteur)||cmp(a.numero,b.numero));
   let h = `<h1 class="title">${esc(client)}</h1>`;
+  const urg = urgOf().filter(u => norm(u.client)===norm(client));
+  if (urg.length) h += `<div class="card" style="padding:0;overflow:hidden"><h3 style="padding:14px 16px 0">Numéros d’urgence du client</h3>${urg.map(urgRowHtml).join('')}</div>`;
   let last = null;
   l.forEach(p => {
     const where = [p.site,p.secteur].filter(Boolean).join(', ');
@@ -509,7 +548,9 @@ async function loadAdmin(){
 }
 async function renderAdmin(reload=true){
   if (reload || !S.admin){ if (!(await loadAdmin())) return; }
-  S.atab==='pdp' ? renderAdminPdp() : renderAdminFds();
+  const n = (S.admin.demandes||[]).filter(d=>d.statut!=='Traitée').length;
+  $('#demCount').hidden = !n; $('#demCount').textContent = n;
+  ({pdp:renderAdminPdp, fds:renderAdminFds, urg:renderAdminUrg, dem:renderAdminDem}[S.atab] || renderAdminPdp)();
 }
 
 /* ---------- Gestion PDP ---------- */
@@ -652,8 +693,8 @@ function renderAdminFds(){
   $('#addFds').onclick = () => editFds(null);
 }
 
-function editFds(id){
-  const f = id ? S.admin.fds.find(x=>x.id===id) : {famille:'',utilite:'',nom:'',fabricant:'',pictos:'',mention:'',epi:'',phrasesH:'',secours:'',lien:''};
+function editFds(id, prefill={}){
+  const f = id ? S.admin.fds.find(x=>x.id===id) : {famille:'',utilite:'',nom:prefill.nom||'',fabricant:prefill.fabricant||'',pictos:'',mention:'',epi:'',phrasesH:'',secours:'',lien:''};
   const sel = (f.pictos||'').split(',').map(s=>s.trim());
   const selEpi = epiCodes(f.epi);
   let h = `<div class="ref-box">Repères conformes à l’annexe II de REACH modifiée par le règlement (UE) 2020/878. Pensez à vérifier la date de révision en première page de la FDS.</div>`;
@@ -696,7 +737,11 @@ function editFds(id){
     v.epi = (v.epi||[]).join(',');
     if (!v.famille || !v.nom){ toast('Famille et nom commercial obligatoires'); return; }
     e.target.disabled = true; e.target.textContent = 'Enregistrement…';
-    try{ await api('saveFds',{pin:S.pin, p:{...v, id:id||''}}); S.dirty=false; back(); toast('Produit enregistré'); renderAdmin(); refresh(); }
+    try{
+      await api('saveFds',{pin:S.pin, p:{...v, id:id||''}});
+      if (prefill.demandeId) await api('traiterDemande',{pin:S.pin, id:prefill.demandeId, statut:'Traitée'});
+      S.dirty=false; back(); toast(prefill.demandeId ? 'Produit enregistré, demande marquée traitée' : 'Produit enregistré'); renderAdmin(); refresh();
+    }
     catch(err){ toast(err.message); e.target.disabled=false; e.target.textContent='Enregistrer'; }
   };
   if (id) $('#delFds').onclick = async () => {
@@ -723,6 +768,156 @@ async function drivePicker(type, onPick){
   $('#modalBody').innerHTML = `<h2>Choisir dans le Drive</h2><input class="search" id="driveSearch" type="search" placeholder="Rechercher un fichier…" style="margin:10px 0"><div id="driveList"></div>`;
   $('#driveSearch').oninput = e => draw(e.target.value);
   draw('');
+}
+
+
+/* ================== URGENCES CLIENTS ================== */
+const ICON_TEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
+function urgOf(){ return (S.data && S.data.urgences) || []; }
+function telHref(n){ let t = String(n||'').replace(/[^\d+]/g,''); if (/^[1-9]\d{8}$/.test(t)) t = '0'+t; return t; }
+function telShow(n){ const t = telHref(n); return /^0\d{9}$/.test(t) ? t.replace(/(\d{2})(?=\d)/g,'$1 ') : String(n||''); }
+function urgRowHtml(u){
+  const sub = [u.site, u.remarque].filter(Boolean).join(' · ');
+  return `<div class="urg-row"><div class="row-main"><div class="row-title">${esc(u.libelle||'Numéro d’urgence')}</div>${sub?`<div class="row-sub" style="white-space:normal">${esc(sub)}</div>`:''}</div>
+    <a class="call" href="tel:${esc(telHref(u.numero))}">${ICON_TEL}${esc(telShow(u.numero))}</a></div>`;
+}
+function renderUrg(){
+  if (!S.data) return;
+  const q = norm($('#urgSearch').value.trim());
+  const items = urgOf().filter(u => !q || norm([u.client,u.site,u.libelle,u.remarque].join(' ')).includes(q));
+  if (!urgOf().length){ $('#urgList').innerHTML = `<div class="empty"><b>Aucun numéro pour l’instant</b>Les numéros d’urgence clients s’ajoutent depuis l’espace gestion.</div>`; return; }
+  if (!items.length){ $('#urgList').innerHTML = `<div class="empty"><b>Aucun client trouvé</b>En cas d’urgence vitale, appelez le 15, le 18 ou le 112 (onglet FDS).</div>`; return; }
+  const g = {};
+  items.forEach(u => (g[u.client] = g[u.client] || []).push(u));
+  $('#urgList').innerHTML = Object.keys(g).sort(cmp).map(c => `<div class="group-h">${esc(c)}</div>
+    <div class="list">${g[c].sort((a,b)=>cmp(a.site,b.site)||cmp(a.libelle,b.libelle)).map(urgRowHtml).join('')}</div>`).join('');
+}
+$('#urgSearch').addEventListener('input', renderUrg);
+
+/* ================== DEMANDE D'AJOUT DE FDS ================== */
+function fileToDataUrl(file){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const m = 1280, k = Math.min(1, m / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Image illisible')); };
+    img.src = url;
+  });
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function openDemande(produit=''){
+  let demandeur = ''; try{ demandeur = localStorage.getItem('qsse_demandeur') || ''; }catch(e){}
+  let h = `<p class="muted" style="margin-bottom:4px">La demande part par mail au service QSSE, qui ajoutera la FDS dans l’outil.</p>`;
+  h += fld('Nom du produit *','produit',produit,{req:true,ph:'Nom commercial inscrit sur l’emballage'});
+  h += fld('Fabricant *','fabricant','',{req:true,ph:'Marque ou fabricant'});
+  h += fld('Demandeur *','demandeur',demandeur,{req:true,ph:'Prénom Nom'});
+  h += fld('Usage / chantier','usage','',{ph:'À quoi sert le produit, où est-il utilisé'});
+  h += fld('Commentaire','commentaire','',{type:'textarea'});
+  h += `<div class="field"><label for="f_photo">Photo de l’étiquette (facultatif)</label><input id="f_photo" type="file" accept="image/*" capture="environment" class="input"><div class="hint">Aide à identifier le bon produit et le bon fournisseur.</div></div>`;
+  h += `<button class="btn" id="sendDem">Envoyer la demande</button>`;
+  openPanel('Demander une FDS', h);
+  watchDirty();
+  $('#sendDem').onclick = async (e) => {
+    const v = formVals(); delete v.photo;
+    if (!v.produit || !v.fabricant || !v.demandeur){ toast('Produit, fabricant et demandeur sont obligatoires'); return; }
+    const btn = e.target; btn.disabled = true; btn.textContent = 'Envoi…';
+    try{ localStorage.setItem('qsse_demandeur', v.demandeur); }catch(x){}
+    const ref = 'DEM-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,6).toUpperCase();
+    const file = $('#f_photo').files[0];
+    try{
+      if (!file){
+        await api('demandeFds', {p:{...v, ref}});
+      } else {
+        btn.textContent = 'Envoi de la photo…';
+        const photo = await fileToDataUrl(file);
+        await fetch(API_URL, {method:'POST', mode:'no-cors', body: JSON.stringify({action:'demandeFds', ...v, ref, photo})});
+        let ok = false;
+        for (let i=0; i<8 && !ok; i++){ await sleep(2000); try{ ok = (await api('checkDemande',{ref})).trouvee; }catch(x){} }
+        if (!ok) throw new Error('Envoi non confirmé : vérifiez le réseau et renvoyez la demande');
+      }
+      S.dirty = false;
+      $('#panelBody').innerHTML = `<div class="empty"><b>Demande envoyée</b>Le service QSSE a reçu votre demande pour « ${esc(v.produit)} ». La FDS apparaîtra dans l’outil une fois ajoutée.<button class="btn" onclick="history.back()">Retour aux FDS</button></div>`;
+    }catch(err){ toast(err.message); btn.disabled = false; btn.textContent = 'Envoyer la demande'; }
+  };
+}
+$('#askFds').onclick = () => openDemande($('#fdsSearch').value.trim());
+
+/* ---------- Gestion urgences clients ---------- */
+function renderAdminUrg(){
+  const list = (S.admin.urgences||[]).slice().sort((a,b)=>cmp(a.client,b.client)||cmp(a.site,b.site)||cmp(a.libelle,b.libelle));
+  let h = `<div class="admin-tools"><button class="btn" id="addUrg">Ajouter un numéro</button></div>`;
+  h += list.length ? `<div class="list" style="margin-top:12px">${list.map(u => `
+    <button class="row" data-uid="${esc(u.id)}"><div class="row-main"><div class="row-title">${esc(u.client)}${u.site?', '+esc(u.site):''}</div>
+    <div class="row-sub">${esc(u.libelle||'Numéro d’urgence')} : ${esc(telShow(u.numero))}</div></div><span class="chev">›</span></button>`).join('')}</div>`
+    : `<div class="empty"><b>Aucun numéro pour l’instant</b>Ajoutez le PC sécurité ou le poste de garde de vos clients.</div>`;
+  $('#adminBody').innerHTML = h;
+  $('#addUrg').onclick = () => editUrg(null);
+  $('#adminBody').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => editUrg(b.dataset.uid));
+}
+function editUrg(id){
+  const u = id ? S.admin.urgences.find(x=>x.id===id) : {client:'',site:'',libelle:'',numero:'',remarque:''};
+  const clients = [...S.admin.pdp.map(p=>p.client), ...S.admin.urgences.map(x=>x.client)];
+  let h = datalist('dlUClient', clients) + datalist('dlUSite', [...S.admin.pdp.map(p=>p.site), ...S.admin.urgences.map(x=>x.site)])
+    + datalist('dlULib', ['PC sécurité','Poste de garde','Service HSE','Salle de contrôle','Infirmerie','Pompiers du site','Responsable de site', ...S.admin.urgences.map(x=>x.libelle)]);
+  h += fld('Client *','client',u.client,{list:'dlUClient',req:true,hint:'Même orthographe que dans les PDP pour que le numéro s’affiche aussi sur la fiche PDP du client.'});
+  h += fld('Site','site',u.site,{list:'dlUSite'});
+  h += fld('Libellé','libelle',u.libelle,{list:'dlULib',ph:'PC sécurité, poste de garde…'});
+  h += fld('Numéro *','numero',u.numero,{type:'tel',req:true,ph:'02 35 00 00 00'});
+  h += fld('Remarque','remarque',u.remarque,{type:'textarea',ph:'Horaires, poste interne, consigne particulière…'});
+  h += `<button class="btn" id="saveUrg">Enregistrer</button>`;
+  if (id) h += `<button class="btn danger" id="delUrg">Supprimer ce numéro</button>`;
+  openPanel(id ? 'Modifier le numéro' : 'Nouveau numéro d’urgence', h);
+  watchDirty();
+  $('#saveUrg').onclick = async (e) => {
+    const v = formVals();
+    if (!v.client || !v.numero){ toast('Client et numéro sont obligatoires'); return; }
+    e.target.disabled = true; e.target.textContent = 'Enregistrement…';
+    try{ await api('saveUrg',{pin:S.pin, p:{...v, id:id||''}}); S.dirty=false; back(); toast('Numéro enregistré'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); e.target.disabled=false; e.target.textContent='Enregistrer'; }
+  };
+  if (id) $('#delUrg').onclick = async () => {
+    if (!confirm('Supprimer ce numéro d’urgence ?')) return;
+    try{ await api('deleteUrg',{pin:S.pin,id}); S.dirty=false; back(); toast('Numéro supprimé'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); }
+  };
+}
+
+/* ---------- Gestion demandes de FDS ---------- */
+function renderAdminDem(){
+  const all = S.admin.demandes || [];
+  const f = S.dfilter || 'todo';
+  const list = all.filter(d => f==='all' || (f==='todo' ? d.statut!=='Traitée' : d.statut==='Traitée'));
+  let h = `<div class="chips">${[['todo','À traiter'],['done','Traitées'],['all','Toutes']].map(([k,l]) =>
+    `<button class="chip" data-df="${k}" aria-pressed="${k===f}">${l}<span class="n">${all.filter(d => k==='all' || (k==='todo' ? d.statut!=='Traitée' : d.statut==='Traitée')).length}</span></button>`).join('')}</div>`;
+  h += list.length ? `<div class="list">${list.map(d => `
+    <button class="row" data-did="${esc(d.id)}"><div class="row-main"><div class="row-title">${esc(d.produit)}</div>
+    <div class="row-sub">${esc(d.fabricant)}, demandé par ${esc(d.demandeur)} le ${fr(d.date)}</div></div>
+    <div class="side"><span class="badge ${d.statut==='Traitée'?'b-ok':'b-warn'}">${esc(d.statut||'À traiter')}</span></div></button>`).join('')}</div>`
+    : `<div class="empty"><b>Aucune demande</b>${f==='todo'?'Toutes les demandes ont été traitées.':''}</div>`;
+  $('#adminBody').innerHTML = h;
+  $('#adminBody').querySelectorAll('[data-df]').forEach(b => b.onclick = () => { S.dfilter = b.dataset.df; renderAdminDem(); });
+  $('#adminBody').querySelectorAll('[data-did]').forEach(b => b.onclick = () => showDemande(b.dataset.did));
+}
+function showDemande(id){
+  const d = S.admin.demandes.find(x=>x.id===id); if (!d) return;
+  const done = d.statut==='Traitée';
+  let h = `<h1 class="title">${esc(d.produit)}</h1><p class="muted">${esc(d.fabricant)}</p>
+    <div class="card"><dl class="kv"><dt>Demandeur</dt><dd>${esc(d.demandeur)}</dd><dt>Date</dt><dd>${fr(d.date)}</dd>
+    ${d.usage?`<dt>Usage</dt><dd>${esc(d.usage)}</dd>`:''}${d.commentaire?`<dt>Commentaire</dt><dd class="pre">${esc(d.commentaire)}</dd>`:''}
+    ${d.photo?`<dt>Photo</dt><dd>${esc(d.photo)}</dd>`:''}<dt>Statut</dt><dd>${esc(d.statut||'À traiter')}${d.traitee?' le '+fr(d.traitee):''}</dd></dl></div>`;
+  if (!done) h += `<button class="btn" id="demCreate">Créer la fiche FDS</button>`;
+  h += `<button class="btn secondary" id="demToggle">${done ? 'Remettre à traiter' : 'Marquer traitée sans créer de fiche'}</button>`;
+  openPanel('Demande de FDS', h);
+  if (!done) $('#demCreate').onclick = () => { editFds(null, {nom:d.produit, fabricant:d.fabricant, demandeId:d.id}); };
+  $('#demToggle').onclick = async (e) => {
+    e.target.disabled = true;
+    try{ await api('traiterDemande',{pin:S.pin, id, statut: done ? 'À traiter' : 'Traitée'}); back(); toast('Demande mise à jour'); renderAdmin(); }
+    catch(err){ toast(err.message); e.target.disabled = false; }
+  };
 }
 
 /* ================== DÉMARRAGE ================== */
