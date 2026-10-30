@@ -73,6 +73,7 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 .sos a span{font-size:12px;opacity:.95}
 .sos a.wide{grid-column:1/-1;min-height:52px}
 .sos a.wide b{font-size:20px;white-space:nowrap}
+.cli-search{top:62px;margin-top:10px}
 .sos-note{font-size:12px;color:var(--muted);margin:0 2px 8px}
 .sos-note a{color:inherit}
 /* Appel */
@@ -491,20 +492,41 @@ function showClient(client){
   let h = `<h1 class="title">${esc(client)}</h1>`;
   const urg = urgOf().filter(u => norm(u.client)===norm(client));
   if (urg.length) h += `<div class="card" style="padding:0;overflow:hidden"><h3 style="padding:14px 16px 0">Numéros d’urgence du client</h3>${urg.map(urgRowHtml).join('')}</div>`;
-  let last = null;
-  l.forEach(p => {
-    const where = [p.site,p.secteur].filter(Boolean).join(', ');
-    if (where && where!==last){ h += `<div class="pdp-h">${esc(where)}</div>`; last = where; }
-    h += `<div class="card">
-      <div class="lead"><b>${p.numero ? 'PDP '+esc(p.numero) : 'N° de PDP non connu'}</b></div>
-      <div style="margin:4px 0 10px">${validityHtml(p)}</div>
-      ${p.nature ? `<p class="pre">${esc(p.nature)}</p>` : ''}
-      ${p.nonConcerne ? '' : (p.lien
-        ? `<a class="btn" href="${esc(p.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir le PDP</a>`
-        : `<span class="btn secondary" aria-disabled="true">Fichier non disponible</span>`)}
-    </div>`;
-  });
+  const sites = [...new Set(l.map(p=>p.site).filter(Boolean))].sort(cmp);
+  if (l.length > 1){
+    h += `<div class="searchbar cli-search"><input id="cliSearch" class="search" type="search" placeholder="Site, secteur, n° de PDP, travaux…" autocomplete="off" aria-label="Rechercher dans les PDP du client"></div>`;
+    if (sites.length > 1) h += `<div class="chips" id="cliSites">${['Tous', ...sites].map(x => `<button class="chip" data-site="${esc(x)}" aria-pressed="${x==='Tous'}">${esc(x)}<span class="n">${x==='Tous' ? l.length : l.filter(p=>p.site===x).length}</span></button>`).join('')}</div>`;
+  }
+  h += `<div id="cliList"></div>`;
   openPanel('Plans de prévention', h);
+  let site = 'Tous';
+  const draw = () => {
+    const q = norm(($('#cliSearch') || {value:''}).value.trim());
+    const items = l.filter(p => (site==='Tous' || p.site===site) && (!q || norm([p.site,p.secteur,p.numero,p.nature].join(' ')).includes(q)));
+    if (!items.length){ $('#cliList').innerHTML = `<div class="empty"><b>Aucun PDP trouvé</b>Essayez le site, le secteur ou le n° de PDP.</div>`; return; }
+    let out = '', last = null;
+    items.forEach(p => {
+      const where = [p.site,p.secteur].filter(Boolean).join(', ');
+      if (where && where!==last){ out += `<div class="pdp-h">${esc(where)}</div>`; last = where; }
+      out += `<div class="card">
+        <div class="lead"><b>${p.numero ? 'PDP '+esc(p.numero) : 'N° de PDP non connu'}</b></div>
+        <div style="margin:4px 0 10px">${validityHtml(p)}</div>
+        ${p.nature ? `<p class="pre">${esc(p.nature)}</p>` : ''}
+        ${p.nonConcerne ? '' : (p.lien
+          ? `<a class="btn" href="${esc(p.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir le PDP</a>`
+          : `<span class="btn secondary" aria-disabled="true">Fichier non disponible</span>`)}
+      </div>`;
+    });
+    if (items.length < l.length) out = `<p class="muted" style="margin:8px 4px 0">${items.length} PDP sur ${l.length}</p>` + out;
+    $('#cliList').innerHTML = out;
+  };
+  if ($('#cliSearch')) $('#cliSearch').addEventListener('input', draw);
+  if ($('#cliSites')) $('#cliSites').querySelectorAll('[data-site]').forEach(b => b.onclick = () => {
+    site = b.dataset.site;
+    $('#cliSites').querySelectorAll('[data-site]').forEach(x => x.setAttribute('aria-pressed', x===b));
+    draw();
+  });
+  draw();
 }
 
 /* ================== ACCÈS GESTION ================== */
