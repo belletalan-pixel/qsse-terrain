@@ -74,6 +74,10 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 .sos a.wide{grid-column:1/-1;min-height:52px}
 .sos a.wide b{font-size:20px;white-space:nowrap}
 .cli-search{top:62px;margin-top:10px}
+.filter-l{font-size:12px;font-weight:700;color:var(--muted);margin:2px 4px 6px;text-transform:uppercase;letter-spacing:.04em}
+.pdp-h .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.pdp-kv{margin:8px 0 4px;grid-template-columns:72px 1fr}
+.pdp-kv dt{font-size:13px;padding-top:1px}
 .sos-note{font-size:12px;color:var(--muted);margin:0 2px 8px}
 .sos-note a{color:inherit}
 /* Appel */
@@ -478,15 +482,18 @@ function renderPdp(){
   items.forEach(p => (clients[p.client] = clients[p.client] || []).push(p));
   $('#pdpList').innerHTML = `<div class="list" style="margin-top:4px">${Object.keys(clients).sort(cmp).map(c => {
     const l = clients[c];
-    const sites = [...new Set(l.map(p=>[p.site,p.secteur].filter(Boolean).join(', ')).filter(Boolean))];
-    const sub = sites.length ? sites.join(' / ') : (l.length>1 ? l.length+' plans de prévention' : '');
-    return `<button class="row" data-client="${esc(c)}"><div class="row-main"><div class="row-title">${esc(c)}</div>${sub?`<div class="row-sub">${esc(sub)}</div>`:''}</div><span class="chev">›</span></button>`;
+    const all = pdpOf().filter(p=>p.client===c);
+    const sites = [...new Set(all.map(p=>p.site).filter(Boolean))].sort(cmp);
+    const subSites = sites.length ? `<div class="row-sub">${sites.length>1?'Sites':'Site'} : ${esc(sites.join(', '))}</div>` : '';
+    const nb = `<div class="row-sub">${all.length} plan${all.length>1?'s':''} de prévention${l.length<all.length ? ' (' + l.length + ' correspondant' + (l.length>1?'s':'') + ' à la recherche)' : ''}</div>`;
+    return `<button class="row" data-client="${esc(c)}"><div class="row-main"><div class="row-title">${esc(c)}</div>${subSites}${nb}</div><span class="chev">›</span></button>`;
   }).join('')}</div>`;
-  $('#pdpList').querySelectorAll('[data-client]').forEach(b => b.onclick = () => showClient(b.dataset.client));
+  const raw = $('#pdpSearch').value.trim();
+  $('#pdpList').querySelectorAll('[data-client]').forEach(b => b.onclick = () => showClient(b.dataset.client, q && !norm(b.dataset.client).includes(q) ? raw : ''));
 }
 $('#pdpSearch').addEventListener('input', renderPdp);
 
-function showClient(client){
+function showClient(client, preQuery=''){
   const l = pdpOf().filter(p=>p.client===client)
     .sort((a,b)=>cmp(a.site,b.site)||cmp(a.secteur,b.secteur)||cmp(a.numero,b.numero));
   let h = `<h1 class="title">${esc(client)}</h1>`;
@@ -494,8 +501,8 @@ function showClient(client){
   if (urg.length) h += `<div class="card" style="padding:0;overflow:hidden"><h3 style="padding:14px 16px 0">Numéros d’urgence du client</h3>${urg.map(urgRowHtml).join('')}</div>`;
   const sites = [...new Set(l.map(p=>p.site).filter(Boolean))].sort(cmp);
   if (l.length > 1){
-    h += `<div class="searchbar cli-search"><input id="cliSearch" class="search" type="search" placeholder="Site, secteur, n° de PDP, travaux…" autocomplete="off" aria-label="Rechercher dans les PDP du client"></div>`;
-    if (sites.length > 1) h += `<div class="chips" id="cliSites">${['Tous', ...sites].map(x => `<button class="chip" data-site="${esc(x)}" aria-pressed="${x==='Tous'}">${esc(x)}<span class="n">${x==='Tous' ? l.length : l.filter(p=>p.site===x).length}</span></button>`).join('')}</div>`;
+    h += `<div class="searchbar cli-search"><input id="cliSearch" class="search" type="search" placeholder="Site, secteur, n° de PDP, travaux…" autocomplete="off" aria-label="Rechercher dans les PDP du client" value="${esc(preQuery)}"></div>`;
+    if (sites.length > 1) h += `<p class="filter-l">Filtrer par site</p><div class="chips" id="cliSites">${['Tous', ...sites].map(x => `<button class="chip" data-site="${esc(x)}" aria-pressed="${x==='Tous'}">${esc(x)}<span class="n">${x==='Tous' ? l.length : l.filter(p=>p.site===x).length}</span></button>`).join('')}</div>`;
   }
   h += `<div id="cliList"></div>`;
   openPanel('Plans de prévention', h);
@@ -506,12 +513,15 @@ function showClient(client){
     if (!items.length){ $('#cliList').innerHTML = `<div class="empty"><b>Aucun PDP trouvé</b>Essayez le site, le secteur ou le n° de PDP.</div>`; return; }
     let out = '', last = null;
     items.forEach(p => {
-      const where = [p.site,p.secteur].filter(Boolean).join(', ');
-      if (where && where!==last){ out += `<div class="pdp-h">${esc(where)}</div>`; last = where; }
+      const site = p.site || '';
+      if (sites.length && site!==last){ out += `<div class="pdp-h"><span class="lbl">Site</span> ${esc(site || 'non précisé')}</div>`; last = site; }
       out += `<div class="card">
-        <div class="lead"><b>${p.numero ? 'PDP '+esc(p.numero) : 'N° de PDP non connu'}</b></div>
-        <div style="margin:4px 0 10px">${validityHtml(p)}</div>
-        ${p.nature ? `<p class="pre">${esc(p.nature)}</p>` : ''}
+        <div class="lead"><b>${p.numero ? 'PDP n° '+esc(p.numero) : 'N° de PDP non connu'}</b></div>
+        <dl class="kv pdp-kv">
+          ${p.secteur ? `<dt>Secteur</dt><dd>${esc(p.secteur)}</dd>` : ''}
+          <dt>Validité</dt><dd>${validityHtml(p)}</dd>
+          ${p.nature ? `<dt>Travaux</dt><dd class="pre">${esc(p.nature)}</dd>` : ''}
+        </dl>
         ${p.nonConcerne ? '' : (p.lien
           ? `<a class="btn" href="${esc(p.lien)}" target="_blank" rel="noopener">${ICON_DOC} Ouvrir le PDP</a>`
           : `<span class="btn secondary" aria-disabled="true">Fichier non disponible</span>`)}
@@ -601,19 +611,25 @@ function renderAdminPdp(){
   const all = S.admin.pdp.map(p => ({...p, st:statut(p)}));
   const f = FILTERS.find(x=>x[0]===S.afilter) || FILTERS[0];
   const rank = {expire:0,renouv:1,envoye:2,inconnu:3,valide:4,nc:5};
-  const list = all.filter(p=>f[2](p.st)).sort((a,b)=> rank[a.st]-rank[b.st] || cmp(a.fin||'9999',b.fin||'9999') || cmp(a.client,b.client));
-  let h = `<div class="chips">${FILTERS.map(x => `<button class="chip" data-af="${x[0]}" aria-pressed="${x[0]===S.afilter}">${x[1]}<span class="n">${all.filter(p=>x[2](p.st)).length}</span></button>`).join('')}</div>`;
+  const q = norm(S.apdp || '');
+  const match = p => !q || norm([p.client,p.site,p.secteur,p.numero,p.nature,p.contact,p.remarques].join(' ')).includes(q);
+  const list = all.filter(p=>f[2](p.st) && match(p)).sort((a,b)=> rank[a.st]-rank[b.st] || cmp(a.fin||'9999',b.fin||'9999') || cmp(a.client,b.client));
+  let h = `<input class="search" id="aPdpSearch" type="search" placeholder="Client, site, secteur, n° de PDP, contact…" value="${esc(S.apdp||'')}" aria-label="Rechercher un PDP" style="margin-bottom:12px">`;
+  h += `<div class="chips">${FILTERS.map(x => `<button class="chip" data-af="${x[0]}" aria-pressed="${x[0]===S.afilter}">${x[1]}<span class="n">${all.filter(p=>x[2](p.st) && match(p)).length}</span></button>`).join('')}</div>`;
   h += `<div class="admin-tools"><button class="btn" id="addPdp">Ajouter un PDP</button><button class="btn secondary" id="runRelance">Vérifier les relances</button></div>`;
   h += list.length ? `<div class="list" style="margin-top:12px">${list.map(p => {
     const j = p.fin ? daysTo(p.fin) : null;
     const when = j===null ? '' : (j<0 ? `depuis ${-j} j` : `J-${j}`);
     return `<button class="row" data-pid="${esc(p.id)}">
-      <div class="row-main"><div class="row-title">${esc([p.client,p.site,p.secteur].filter(Boolean).join(', '))}</div>
-      <div class="row-sub">${p.numero ? 'PDP '+esc(p.numero) : 'N° non connu'}${p.fin ? ', fin le '+fr(p.fin) : ''}</div></div>
+      <div class="row-main"><div class="row-title">${esc(p.client)}</div>
+      ${p.site||p.secteur ? `<div class="row-sub">${p.site?'Site : '+esc(p.site):''}${p.site&&p.secteur?' | ':''}${p.secteur?'Secteur : '+esc(p.secteur):''}</div>` : ''}
+      <div class="row-sub">${p.numero ? 'PDP n° '+esc(p.numero) : 'N° non connu'}${p.fin ? ', fin le '+fr(p.fin) : ''}</div></div>
       <div class="side"><span class="badge ${ST[p.st].c}">${ST[p.st].l}</span>${p.st!=='valide'&&p.st!=='nc'?when:''}</div>
     </button>`; }).join('')}</div>`
-    : `<div class="empty"><b>Rien dans cette catégorie</b>${S.afilter==='traiter' ? 'Aucun PDP n’arrive à échéance dans les '+S.admin.seuil+' prochains jours.' : ''}</div>`;
+    : `<div class="empty"><b>${q ? 'Aucun PDP trouvé' : 'Rien dans cette catégorie'}</b>${q ? 'Essayez un autre mot, ou le filtre « Tous ».' : (S.afilter==='traiter' ? 'Aucun PDP n’arrive à échéance dans les '+S.admin.seuil+' prochains jours.' : '')}</div>`;
   $('#adminBody').innerHTML = h;
+  const sIn = $('#aPdpSearch');
+  sIn.oninput = () => { S.apdp = sIn.value; const pos = sIn.selectionStart; renderAdminPdp(); const n = $('#aPdpSearch'); n.focus(); n.setSelectionRange(pos,pos); };
   $('#adminBody').querySelectorAll('[data-af]').forEach(b => b.onclick = () => { S.afilter=b.dataset.af; renderAdminPdp(); });
   $('#adminBody').querySelectorAll('[data-pid]').forEach(b => b.onclick = () => editPdp(b.dataset.pid));
   $('#addPdp').onclick = () => editPdp(null);
