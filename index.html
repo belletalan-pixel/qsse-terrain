@@ -227,6 +227,16 @@ textarea.input{min-height:84px;resize:vertical;overflow:hidden;line-height:1.45}
 .mention.attention{background:var(--tag)}
 .btn.secondary{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 .mini-btn{background:var(--bg);border:1px solid var(--line)}
+.seg{overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;font-size:13.5px;padding:10px 8px}
+.gh-row{display:flex;align-items:center;gap:8px}
+.gh-row > span{flex:1;min-width:0}
+.gh-row .mini-btn{min-height:34px;font-size:13px}
+.cfg-h{font-family:'Barlow Condensed',Barlow,sans-serif;font-size:21px;font-weight:700;margin:22px 2px 4px}
+.cfg-p{font-size:13px;color:var(--muted);margin:0 2px 8px}
+.ord{display:flex;gap:4px;flex:none}
+.ord button{width:36px;height:36px;border:1px solid var(--line);background:var(--bg);border-radius:8px;font-size:16px;color:var(--ink)}
+.ord button:disabled{opacity:.35}
 </style>
 </head>
 <body>
@@ -272,6 +282,7 @@ textarea.input{min-height:84px;resize:vertical;overflow:hidden;line-height:1.45}
       <button data-atab="fds" aria-pressed="false">FDS</button>
       <button data-atab="urg" aria-pressed="false">Urgences</button>
       <button data-atab="dem" aria-pressed="false">Demandes<span class="n" id="demCount" hidden></span></button>
+      <button data-atab="cfg" aria-pressed="false" aria-label="Réglages">Réglages</button>
     </div>
     <div id="adminBody"></div>
   </section>
@@ -625,7 +636,7 @@ async function renderAdmin(reload=true){
   if (reload || !S.admin){ if (!(await loadAdmin())) return; }
   const n = (S.admin.demandes||[]).filter(d=>d.statut!=='Traitée').length;
   $('#demCount').hidden = !n; $('#demCount').textContent = n;
-  ({pdp:renderAdminPdp, fds:renderAdminFds, urg:renderAdminUrg, dem:renderAdminDem}[S.atab] || renderAdminPdp)();
+  ({pdp:renderAdminPdp, fds:renderAdminFds, urg:renderAdminUrg, dem:renderAdminDem, cfg:renderAdminCfg}[S.atab] || renderAdminPdp)();
 }
 
 /* ---------- Gestion PDP ---------- */
@@ -975,18 +986,24 @@ $('#askFds').onclick = () => openDemande($('#fdsSearch').value.trim());
 
 /* ---------- Gestion urgences clients ---------- */
 function renderAdminUrg(){
-  const list = (S.admin.urgences||[]).slice().sort((a,b)=>cmp(a.client,b.client)||cmp(a.site,b.site)||cmp(a.libelle,b.libelle));
+  const all = S.admin.urgences||[];
+  const g = {};
+  all.forEach(u => (g[u.client] = g[u.client] || []).push(u));
   let h = `<div class="admin-tools"><button class="btn" id="addUrg">Ajouter un numéro</button></div>`;
-  h += list.length ? `<div class="list" style="margin-top:12px">${list.map(u => `
-    <button class="row" data-uid="${esc(u.id)}"><div class="row-main"><div class="row-title">${esc(u.client)}${u.site?', '+esc(u.site):''}</div>
-    <div class="row-sub">${esc(u.libelle||'Numéro d’urgence')} : ${esc(telShow(u.numero))}</div></div><span class="chev">›</span></button>`).join('')}</div>`
+  h += all.length ? Object.keys(g).sort(cmp).map(c => `
+    <div class="group-h gh-row"><span>${esc(c)} <span class="muted" style="font-family:Barlow,sans-serif;font-size:13px;font-weight:500">${g[c].length} numéro${g[c].length>1?'s':''}</span></span>
+      <button type="button" class="mini-btn" data-addc="${esc(c)}">+ Numéro</button></div>
+    <div class="list">${g[c].sort((a,b)=>cmp(a.site,b.site)||cmp(a.libelle,b.libelle)).map(u => `
+      <button class="row" data-uid="${esc(u.id)}"><div class="row-main"><div class="row-title">${esc(u.libelle||'Numéro d’urgence')}</div>
+      <div class="row-sub">${u.site?'Site : '+esc(u.site)+' | ':''}${esc(telShow(u.numero))}</div></div><span class="chev">›</span></button>`).join('')}</div>`).join('')
     : `<div class="empty"><b>Aucun numéro pour l’instant</b>Ajoutez le PC sécurité ou le poste de garde de vos clients.</div>`;
   $('#adminBody').innerHTML = h;
   $('#addUrg').onclick = () => editUrg(null);
+  $('#adminBody').querySelectorAll('[data-addc]').forEach(b => b.onclick = () => editUrg(null, b.dataset.addc));
   $('#adminBody').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => editUrg(b.dataset.uid));
 }
-function editUrg(id){
-  const u = id ? S.admin.urgences.find(x=>x.id===id) : {client:'',site:'',libelle:'',numero:'',remarque:''};
+function editUrg(id, client=''){
+  const u = id ? S.admin.urgences.find(x=>x.id===id) : {client,site:'',libelle:'',numero:'',remarque:''};
   const clients = [...S.admin.pdp.map(p=>p.client), ...S.admin.urgences.map(x=>x.client)];
   let h = datalist('dlUClient', clients) + datalist('dlUSite', [...S.admin.pdp.map(p=>p.site), ...S.admin.urgences.map(x=>x.site)])
     + datalist('dlULib', ['PC sécurité','Poste de garde','Service HSE','Salle de contrôle','Infirmerie','Pompiers du site','Responsable de site', ...S.admin.urgences.map(x=>x.libelle)]);
@@ -1009,6 +1026,114 @@ function editUrg(id){
   if (id) $('#delUrg').onclick = async () => {
     if (!confirm('Supprimer ce numéro d’urgence ?')) return;
     try{ await api('deleteUrg',{pin:S.pin,id}); S.dirty=false; back(); toast('Numéro supprimé'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); }
+  };
+}
+
+
+/* ---------- Réglages : configuration, utilisateurs, familles ---------- */
+const CFG_LABELS = {
+  pin_gestion:['Code d’accès à l’espace gestion','4 chiffres. Après changement, il sera demandé aux autres gestionnaires.'],
+  seuil_relance_jours:['Relance PDP : jours avant la fin de validité',''],
+  mail_relance:['Destinataires des relances PDP','Plusieurs adresses : séparées par des virgules. Jamais de copie.'],
+  mail_sauvegarde:['Destinataire de la sauvegarde Excel du lundi',''],
+  mail_demande_fds:['Destinataires des demandes de FDS',''],
+  fds_validite_ans:['Âge d’une FDS à vérifier (années)',''],
+  fds_seuil_jours:['Alerte FDS : jours avant cet âge',''],
+  mail_alerte_fds:['Destinataires des alertes FDS',''],
+  dossier_fds_id:['Dossier Drive des FDS (ID)','La partie après /folders/ dans l’adresse du dossier.'],
+  dossier_pdp_id:['Dossier Drive des PDP (ID)','']
+};
+function renderAdminCfg(){
+  const cfg = S.admin.config || [];
+  const fams = S.admin.familles || [];
+  const users = S.admin.utilisateurs || [];
+  let h = `<div class="cfg-h">Configuration</div><p class="cfg-p">Réglages de l’outil, enregistrés dans l’onglet Configuration du Sheet.</p><div class="card" id="cfgForm">`;
+  h += cfg.filter(c => CFG_LABELS[c.cle]).map(c => {
+    const [l, hint] = CFG_LABELS[c.cle];
+    const num = /jours|ans/.test(c.cle);
+    return fld(l, 'cfg_'+c.cle, c.valeur, {type: c.cle==='pin_gestion' ? 'text' : (num ? 'number' : 'text'), hint});
+  }).join('');
+  h += `<button class="btn" id="saveCfg">Enregistrer la configuration</button></div>`;
+
+  h += `<div class="cfg-h">Utilisateurs</div><p class="cfg-p">Liste des demandeurs de FDS. L’adresse mail sert au mail de retour quand la demande est traitée.</p>`;
+  h += `<div class="admin-tools"><button class="btn" id="addUser">Ajouter un utilisateur</button></div>`;
+  h += users.length ? `<div class="list" style="margin-top:10px">${users.map((u,i) => `
+    <button class="row" data-usr="${i}"><div class="row-main"><div class="row-title">${esc(u.nom)}</div>
+    <div class="row-sub">${u.email ? esc(u.email) : 'Pas d’adresse mail'}</div></div>
+    <div class="side">${u.actif ? '' : '<span class="badge b-grey">Inactif</span>'}${u.email ? '' : '<span class="badge b-warn">Sans mail</span>'}</div></button>`).join('')}</div>`
+    : `<div class="empty"><b>Aucun utilisateur</b>Ajoutez les techniciens pour qu’ils reçoivent un retour sur leurs demandes.</div>`;
+
+  h += `<div class="cfg-h">Familles de produits</div><p class="cfg-p">L’ordre ci-dessous est celui des filtres de l’onglet FDS. Renommer une famille met à jour ses produits.</p>`;
+  h += `<div class="admin-tools"><button class="btn" id="addFam">Ajouter une famille</button></div>`;
+  h += `<div class="list" style="margin-top:10px">${fams.map((f,i) => {
+    const n = S.admin.fds.filter(x=>x.famille===f).length;
+    return `<div class="row"><div class="ord"><button type="button" data-mv="${i}" data-s="-1" aria-label="Monter" ${i===0?'disabled':''}>↑</button><button type="button" data-mv="${i}" data-s="1" aria-label="Descendre" ${i===fams.length-1?'disabled':''}>↓</button></div>
+      <button type="button" class="row-main" data-fam="${i}" style="border:0;background:none;text-align:left;padding:0"><div class="row-title">${esc(f)}</div><div class="row-sub">${n} produit${n>1?'s':''}</div></button><span class="chev">›</span></div>`;
+  }).join('')}</div>`;
+  $('#adminBody').innerHTML = h;
+
+  $('#saveCfg').onclick = async (e) => {
+    const p = {};
+    cfg.filter(c => CFG_LABELS[c.cle]).forEach(c => { const v = $('#f_cfg_'+c.cle).value.trim(); if (v !== String(c.valeur).trim()) p[c.cle] = v; });
+    if (!Object.keys(p).length){ toast('Aucune modification'); return; }
+    if (p.pin_gestion && !confirm('Changer le code d’accès à l’espace gestion ? Pensez à prévenir les autres gestionnaires.')) return;
+    e.target.disabled = true; e.target.textContent = 'Enregistrement…';
+    try{
+      await api('saveConfig',{pin:S.pin, p});
+      if (p.pin_gestion){ S.pin = p.pin_gestion; sessionStorage.setItem('qsse_pin', S.pin); }
+      toast('Configuration enregistrée'); renderAdmin();
+    }catch(err){ toast(err.message); e.target.disabled = false; e.target.textContent = 'Enregistrer la configuration'; }
+  };
+  $('#addUser').onclick = () => editUser(null);
+  $('#adminBody').querySelectorAll('[data-usr]').forEach(b => b.onclick = () => editUser(users[+b.dataset.usr]));
+  $('#addFam').onclick = () => editFamille(null);
+  $('#adminBody').querySelectorAll('[data-fam]').forEach(b => b.onclick = () => editFamille(fams[+b.dataset.fam]));
+  $('#adminBody').querySelectorAll('[data-mv]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try{ await api('moveFamille',{pin:S.pin, nom:fams[+b.dataset.mv], sens:b.dataset.s}); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); b.disabled = false; }
+  });
+}
+function editUser(u){
+  const x = u || {nom:'',email:'',actif:true};
+  let h = fld('Nom *','unom',x.nom,{req:true,ph:'Prénom Nom',hint:'Tel qu’il apparaîtra dans la liste du formulaire de demande.'});
+  h += fld('Adresse mail','uemail',x.email,{type:'email',ph:'prenom.nom@paganetti.fr',hint:'Pour le mail de retour quand sa demande de FDS est traitée.'});
+  h += `<label class="check"><input type="checkbox" id="f_uactif" ${x.actif?'checked':''}> Actif (apparaît dans la liste)</label>`;
+  h += `<button class="btn" id="saveUser">Enregistrer</button>`;
+  if (u) h += `<button class="btn danger" id="delUser">Supprimer cet utilisateur</button>`;
+  openPanel(u ? 'Modifier l’utilisateur' : 'Nouvel utilisateur', h);
+  watchDirty();
+  $('#saveUser').onclick = async (e) => {
+    const p = {nom:$('#f_unom').value.trim(), email:$('#f_uemail').value.trim(), actif:$('#f_uactif').checked, ancien: u ? u.nom : ''};
+    if (!p.nom){ toast('Le nom est obligatoire'); return; }
+    e.target.disabled = true;
+    try{ await api('saveUser',{pin:S.pin, p}); S.dirty=false; back(); toast('Utilisateur enregistré'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); e.target.disabled = false; }
+  };
+  if (u) $('#delUser').onclick = async () => {
+    if (!confirm('Supprimer '+u.nom+' de la liste ? Pour le masquer sans le supprimer, décochez « Actif ».')) return;
+    try{ await api('deleteUser',{pin:S.pin, nom:u.nom}); S.dirty=false; back(); toast('Utilisateur supprimé'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); }
+  };
+}
+function editFamille(nom){
+  const n = nom ? S.admin.fds.filter(x=>x.famille===nom).length : 0;
+  let h = fld('Nom de la famille *','fnom',nom||'',{req:true,hint: nom ? `${n} produit${n>1?'s':''} dans cette famille${n?' : ils seront renommés avec elle':''}.` : ''});
+  h += `<button class="btn" id="saveFam">Enregistrer</button>`;
+  if (nom) h += `<button class="btn danger" id="delFam" ${n?'aria-disabled="true"':''}>Supprimer cette famille</button>${n?'<p class="hint">Suppression possible une fois la famille vide.</p>':''}`;
+  openPanel(nom ? 'Modifier la famille' : 'Nouvelle famille', h);
+  watchDirty();
+  $('#saveFam').onclick = async (e) => {
+    const v = $('#f_fnom').value.trim();
+    if (!v){ toast('Le nom est obligatoire'); return; }
+    e.target.disabled = true;
+    try{ await api('saveFamille',{pin:S.pin, ancien:nom||'', nom:v}); S.dirty=false; back(); toast('Famille enregistrée'); renderAdmin(); refresh(); }
+    catch(err){ toast(err.message); e.target.disabled = false; }
+  };
+  if (nom && !n) $('#delFam').onclick = async () => {
+    if (!confirm('Supprimer la famille « '+nom+' » ?')) return;
+    try{ await api('deleteFamille',{pin:S.pin, nom}); S.dirty=false; back(); toast('Famille supprimée'); renderAdmin(); refresh(); }
     catch(err){ toast(err.message); }
   };
 }
