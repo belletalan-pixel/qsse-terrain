@@ -164,7 +164,7 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 96px}
 .field .hint{font-size:13px;color:var(--muted);margin-top:4px}
 .input{width:100%;border:2px solid var(--line);background:var(--surface);border-radius:10px;padding:12px;font-size:16px}
 .input:focus{border-color:var(--brand);outline:none}
-textarea.input{min-height:84px;resize:vertical}
+textarea.input{min-height:84px;resize:vertical;overflow:hidden;line-height:1.45}
 .inline{display:flex;gap:8px}
 .inline .input{flex:1;min-width:0}
 .mini-btn{flex:none;border:0;background:var(--chip);border-radius:10px;padding:0 14px;font-size:14px;font-weight:600}
@@ -476,6 +476,7 @@ function fdsDetailHtml(f){
   let h = `<h1 class="title">${esc(f.nom)}</h1>`;
   if (f.utilite) h += `<p class="lead">${esc(f.utilite)}</p>`;
   h += `<p class="muted">${esc([f.fabricant, f.famille].filter(Boolean).join(', '))}</p>`;
+  if (f.dateFds) h += `<p class="muted">Version de la FDS : ${fr(f.dateFds)}</p>`;
   if (m==='danger') h += `<div class="mention danger">DANGER</div>`;
   if (m==='attention') h += `<div class="mention attention">ATTENTION</div>`;
   h += `<div class="card"><h3>Pictogrammes de danger<span class="ref">Rubrique 2.2</span></h3>${pictos.length
@@ -677,7 +678,7 @@ function renderAdminPdp(){
   $('#addPdp').onclick = () => editPdp(null);
   $('#runRelance').onclick = async (e) => {
     e.target.disabled = true;
-    try{ const r = await api('relances',{pin:S.pin}); toast(r.envoyes ? r.envoyes+' PDP relancé(s) par mail' : 'Aucune nouvelle relance à envoyer'); renderAdmin(); }
+    try{ const r = await api('relances',{pin:S.pin}); toast((r.envoyes || r.fds) ? [r.envoyes ? r.envoyes+' PDP relancé(s)' : '', r.fds ? r.fds+' FDS à revoir' : ''].filter(Boolean).join(', ')+' : mail envoyé' : 'Aucune nouvelle relance à envoyer'); renderAdmin(); }
     catch(err){ toast(err.message); e.target.disabled=false; }
   };
 }
@@ -699,7 +700,13 @@ function formVals(){
   });
   return o;
 }
-function watchDirty(){ $('#panelBody').querySelectorAll('input,textarea,select').forEach(el => el.addEventListener('input', () => S.dirty = true)); }
+function autoGrow(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 4) + 'px'; }
+function watchDirty(){
+  $('#panelBody').querySelectorAll('input,textarea,select').forEach(el => el.addEventListener('input', () => S.dirty = true));
+  // Les zones de texte s'adaptent à leur contenu, à l'ouverture et pendant la saisie
+  $('#panelBody').querySelectorAll('textarea.input').forEach(t => { autoGrow(t); t.addEventListener('input', () => autoGrow(t)); });
+}
+window.addEventListener('resize', () => document.querySelectorAll('#panelBody textarea.input').forEach(autoGrow));
 function mailtoClient(p){
   if (!p.contact) return '';
   const to = p.contact.split(/[;,\s]+/).filter(Boolean).join(',');
@@ -755,22 +762,44 @@ function editPdp(id){
 }
 
 /* ---------- Gestion FDS ---------- */
+function echeanceFds(f){
+  if (!f.dateFds) return null;
+  const [y,m,d] = f.dateFds.split('-').map(Number);
+  const e = new Date(y + (S.admin.fdsAns||3), m-1, d);
+  const iso = e.getFullYear()+'-'+String(e.getMonth()+1).padStart(2,'0')+'-'+String(e.getDate()).padStart(2,'0');
+  return { iso, jours: daysTo(iso) };
+}
+function etatFds(f){
+  const e = echeanceFds(f);
+  if (!e) return 'nodate';
+  if (e.jours < 0) return 'revoir';
+  if (e.jours <= (S.admin.fdsSeuil||60)) return 'bientot';
+  return 'ok';
+}
+const FDS_ETAT = { revoir:{l:'À revoir',c:'b-bad'}, bientot:{l:'Bientôt à revoir',c:'b-warn'}, nodate:{l:'Sans date',c:'b-grey'}, ok:{l:'À jour',c:'b-ok'} };
 function renderAdminFds(){
   const q = norm(S.afds || '');
-  const list = S.admin.fds.filter(f => !q || norm([f.nom,f.utilite,f.fabricant,f.famille].join(' ')).includes(q))
+  const ff = S.fdsFilter || 'all';
+  const base = S.admin.fds.filter(f => !q || norm([f.nom,f.utilite,f.fabricant,f.famille].join(' ')).includes(q));
+  const list = base.filter(f => ff==='all' || (ff==='revoir' ? ['revoir','bientot'].includes(etatFds(f)) : etatFds(f)===ff))
     .sort((a,b)=>cmp(a.famille,b.famille)||cmp(a.nom,b.nom));
   let h = `<input class="search" id="aFdsSearch" type="search" placeholder="Rechercher un produit…" value="${esc(S.afds||'')}" aria-label="Rechercher un produit">`;
-  h += `<div class="admin-tools" style="margin-top:12px"><button class="btn" id="addFds">Ajouter un produit</button></div>`;
+  h += `<div class="chips" style="margin-top:12px">${[['all','Toutes',()=>true],['revoir','À revoir',f=>['revoir','bientot'].includes(etatFds(f))],['nodate','Sans date',f=>etatFds(f)==='nodate']].map(([k,l,t]) =>
+    `<button class="chip" data-ff="${k}" aria-pressed="${k===ff}">${l}<span class="n">${base.filter(t).length}</span></button>`).join('')}</div>`;
+  h += `<div class="admin-tools"><button class="btn" id="addFds">Ajouter un produit</button></div>`;
   h += list.length ? `<div class="list" style="margin-top:12px">${list.map(f => `
     <button class="row" data-fid="${esc(f.id)}"><div class="row-main"><div class="row-title">${esc(f.nom)}</div>
     <div class="row-sub">${esc(f.famille)}${f.fabricant?', '+esc(f.fabricant):''}</div></div>
-    <div class="side">${f.lien ? '' : '<span class="badge b-warn">FDS non liée</span>'}</div></button>`).join('')}</div>`
+    <div class="side">${(()=>{ const st = etatFds(f); const e = echeanceFds(f);
+      return `<span class="badge ${FDS_ETAT[st].c}">${FDS_ETAT[st].l}</span>${e && st!=='ok' ? (e.jours<0 ? 'depuis '+(-e.jours)+' j' : 'J-'+e.jours) : ''}`; })()}
+      ${f.lien ? '' : '<span class="badge b-warn">FDS non liée</span>'}</div></button>`).join('')}</div>`
     : `<div class="empty"><b>${S.admin.fds.length ? 'Aucun produit trouvé' : 'Aucun produit pour l’instant'}</b>${S.admin.fds.length ? '' : 'Ajoutez votre premier produit.'}</div>`;
   $('#adminBody').innerHTML = h;
   const s = $('#aFdsSearch');
   s.oninput = () => { S.afds = s.value; const pos=s.selectionStart; renderAdminFds(); const n=$('#aFdsSearch'); n.focus(); n.setSelectionRange(pos,pos); };
   $('#adminBody').querySelectorAll('[data-fid]').forEach(b => b.onclick = () => editFds(b.dataset.fid));
   $('#addFds').onclick = () => editFds(null);
+  $('#adminBody').querySelectorAll('[data-ff]').forEach(b => b.onclick = () => { S.fdsFilter = b.dataset.ff; renderAdminFds(); });
 }
 
 function editFds(id, prefill={}){
@@ -781,6 +810,8 @@ function editFds(id, prefill={}){
   h += fld('Lien de la FDS','lien',f.lien,{type:'url',ph:'https://drive.google.com/…',
         after: S.admin.driveFds ? `<button type="button" class="mini-btn" id="pickFds">Drive</button>` : '',
         hint: S.admin.driveFds ? 'Choisir le fichier dans le Drive remplit aussi l’utilité, le nom et le fabricant.' : ''});
+  const ech = echeanceFds(f);
+  h += fld('Date de la FDS','dateFds',f.dateFds||'',{type:'date',hint:`Date de révision, en première page de la FDS. Une alerte part ${S.admin.fdsSeuil||60} jours avant ses ${S.admin.fdsAns||3} ans.${ech ? ' Échéance : '+fr(ech.iso)+'.' : ''}`});
   h += `<div class="field"><label for="f_famille">Famille *</label><select id="f_famille" name="famille" class="input">
         <option value="">Choisir…</option>${S.admin.familles.map(x=>`<option ${x===f.famille?'selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
   h += fld('Utilité du produit','utilite',f.utilite,{ph:'Détecteur de fuite',hint:'FDS rubrique 1.2 : utilisations identifiées.'});
@@ -819,8 +850,12 @@ function editFds(id, prefill={}){
     e.target.disabled = true; e.target.textContent = 'Enregistrement…';
     try{
       await api('saveFds',{pin:S.pin, p:{...v, id:id||''}});
-      if (prefill.demandeId) await api('traiterDemande',{pin:S.pin, id:prefill.demandeId, statut:'Traitée'});
-      S.dirty=false; back(); toast(prefill.demandeId ? 'Produit enregistré, demande marquée traitée' : 'Produit enregistré'); renderAdmin(); refresh();
+      let info = '';
+      if (prefill.demandeId){
+        const r = await api('traiterDemande',{pin:S.pin, id:prefill.demandeId, statut:'Traitée', message:prefill.message||'', fiche:'famille '+v.famille});
+        info = r.mail ? ', demandeur prévenu par mail' : ', demande marquée traitée';
+      }
+      S.dirty=false; back(); toast('Produit enregistré' + info); renderAdmin(); refresh();
     }
     catch(err){ toast(err.message); e.target.disabled=false; e.target.textContent='Enregistrer'; }
   };
@@ -894,15 +929,27 @@ function openDemande(produit=''){
   let h = `<p class="muted" style="margin-bottom:4px">La demande part par mail au service QSSE, qui ajoutera la FDS dans l’outil.</p>`;
   h += fld('Nom du produit *','produit',produit,{req:true,ph:'Nom commercial inscrit sur l’emballage'});
   h += fld('Fabricant *','fabricant','',{req:true,ph:'Marque ou fabricant'});
-  h += fld('Demandeur *','demandeur',demandeur,{req:true,ph:'Prénom Nom'});
+  const noms = (S.data && S.data.demandeurs) || [];
+  if (noms.length){
+    const connu = noms.includes(demandeur);
+    h += `<div class="field"><label for="f_demSel">Demandeur *</label><select id="f_demSel" class="input">
+      <option value="">Choisir votre nom…</option>${noms.map(n=>`<option ${n===demandeur?'selected':''}>${esc(n)}</option>`).join('')}
+      <option value="__autre" ${demandeur && !connu ? 'selected' : ''}>Autre (nom non listé)</option></select>
+      <div class="hint" id="demHint">Vous recevrez un mail quand la FDS sera ajoutée.</div></div>`;
+    h += `<div class="field" id="demAutreBox" ${demandeur && !connu ? '' : 'hidden'}><label for="f_demAutre">Votre nom *</label><input id="f_demAutre" class="input" value="${esc(connu?'':demandeur)}" placeholder="Prénom Nom"><div class="hint">Pas de mail de retour : demandez au service QSSE de vous ajouter à la liste.</div></div>`;
+  } else {
+    h += fld('Demandeur *','demandeur',demandeur,{req:true,ph:'Prénom Nom'});
+  }
   h += fld('Usage / chantier','usage','',{ph:'À quoi sert le produit, où est-il utilisé'});
   h += fld('Commentaire','commentaire','',{type:'textarea'});
   h += `<div class="field"><label for="f_photo">Photo de l’étiquette (facultatif)</label><input id="f_photo" type="file" accept="image/*" capture="environment" class="input"><div class="hint">Aide à identifier le bon produit et le bon fournisseur.</div></div>`;
   h += `<button class="btn" id="sendDem">Envoyer la demande</button>`;
   openPanel('Demander une FDS', h);
   watchDirty();
+  if ($('#f_demSel')) $('#f_demSel').onchange = () => { const a = $('#f_demSel').value === '__autre'; $('#demAutreBox').hidden = !a; $('#demHint').hidden = a; if (a) $('#f_demAutre').focus(); };
   $('#sendDem').onclick = async (e) => {
     const v = formVals(); delete v.photo;
+    if ($('#f_demSel')) v.demandeur = $('#f_demSel').value === '__autre' ? $('#f_demAutre').value.trim() : $('#f_demSel').value;
     if (!v.produit || !v.fabricant || !v.demandeur){ toast('Produit, fabricant et demandeur sont obligatoires'); return; }
     const btn = e.target; btn.disabled = true; btn.textContent = 'Envoi…';
     try{ localStorage.setItem('qsse_demandeur', v.demandeur); }catch(x){}
@@ -989,13 +1036,20 @@ function showDemande(id){
     <div class="card"><dl class="kv"><dt>Demandeur</dt><dd>${esc(d.demandeur)}</dd><dt>Date</dt><dd>${fr(d.date)}</dd>
     ${d.usage?`<dt>Usage</dt><dd>${esc(d.usage)}</dd>`:''}${d.commentaire?`<dt>Commentaire</dt><dd class="pre">${esc(d.commentaire)}</dd>`:''}
     ${d.photo?`<dt>Photo</dt><dd>${esc(d.photo)}</dd>`:''}<dt>Statut</dt><dd>${esc(d.statut||'À traiter')}${d.traitee?' le '+fr(d.traitee):''}</dd></dl></div>`;
-  if (!done) h += `<button class="btn" id="demCreate">Créer la fiche FDS</button>`;
+  if (d.message) h += `<div class="card"><h3>Message envoyé au demandeur</h3><p class="pre">${esc(d.message)}</p>${d.informe?`<p class="muted">Prévenu par mail le ${fr(d.informe)}</p>`:''}</div>`;
+  if (!done){
+    h += fld('Message au demandeur (facultatif)','message','',{type:'textarea',ph:'Ex. : la FDS est rangée en famille Aérosol. Merci pour la photo.',
+      hint: d.mailConnu ? 'Le demandeur recevra un mail dès que la demande sera traitée.' : 'Ce nom n’est pas dans l’onglet Utilisateurs du Sheet (ou sans adresse mail) : pas de mail de retour.'});
+    h += `<button class="btn" id="demCreate">Créer la fiche FDS</button>`;
+  }
   h += `<button class="btn secondary" id="demToggle">${done ? 'Remettre à traiter' : 'Marquer traitée sans créer de fiche'}</button>`;
   openPanel('Demande de FDS', h);
-  if (!done) $('#demCreate').onclick = () => { editFds(null, {nom:d.produit, fabricant:d.fabricant, demandeId:d.id}); };
+  watchDirty();
+  const msg = () => ($('#f_message') ? $('#f_message').value.trim() : '');
+  if (!done) $('#demCreate').onclick = () => { S.dirty = false; editFds(null, {nom:d.produit, fabricant:d.fabricant, demandeId:d.id, message:msg()}); };
   $('#demToggle').onclick = async (e) => {
     e.target.disabled = true;
-    try{ await api('traiterDemande',{pin:S.pin, id, statut: done ? 'À traiter' : 'Traitée'}); back(); toast('Demande mise à jour'); renderAdmin(); }
+    try{ const r = await api('traiterDemande',{pin:S.pin, id, statut: done ? 'À traiter' : 'Traitée', message: msg()}); S.dirty = false; back(); toast(r.mail ? 'Demande traitée, demandeur prévenu par mail' : 'Demande mise à jour'); renderAdmin(); }
     catch(err){ toast(err.message); e.target.disabled = false; }
   };
 }
